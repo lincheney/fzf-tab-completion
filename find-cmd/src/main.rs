@@ -1,3 +1,6 @@
+extern crate regex;
+use regex::Regex;
+
 pub struct Match {
     pub start: usize,
     pub end: usize,

@@ -1,0 +1,6 @@
+[package]
+name = "find-cmd"
+version = "0.1.0"
+authors = ["Cheney Lin <lincheney@gmail.com>"]
+
+[dependencies]

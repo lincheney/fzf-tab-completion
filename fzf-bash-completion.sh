@@ -24,12 +24,10 @@ fzf_bash_completion() {
     local line="${READLINE_LINE:$start:$end-$start}"
     local first=( ${line::$point} )
     local COMP_WORDS=( $line )
-    local COMP_CWORD="${#first[@]}"
     if [ "$point" = 0 -o "${line:$point-1:1}" = ' ' ]; then
-        :
-    else
-        local COMP_CWORD="$(( COMP_CWORD-1 ))"
+        first+=( '' )
     fi
+    local COMP_CWORD="$(( ${#first[@]}-1 ))"
     local COMP_POINT="$point"
     local COMP_LINE="$line"
     local cmd="${COMP_WORDS[0]}"

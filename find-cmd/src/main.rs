@@ -150,9 +150,12 @@ mod test {
         assert_parse_line!(" echo", " 123", "echo 123");
 
         assert_parse_line!("echo ", "\"123\"", "echo \"123\"");
+        assert_parse_line!("echo ", "\"123", "echo \"123");
         assert_parse_line!("echo ", "\"12$(cat)3\"", "echo \"12$(cat)3\"");
         assert_parse_line!("echo \"12$(ca", "t)3\"", "cat");
         assert_parse_line!("echo", " '12(3'", "echo '12(3'");
+        assert_parse_line!("echo", " '12(3", "echo '12(3");
+        assert_parse_line!("echo", " $'12\\'3'", "echo $'12\\'3'");
         assert_parse_line!("echo", " '1\\'2\\\\(3'", "echo '1\\'2\\\\(3'");
 
         assert_parse_line!("[[ echo", " 123", "echo 123");

@@ -17,7 +17,7 @@ impl Match {
 }
 
 lazy_static! {
-    static ref DQ_STRING_RE: Regex = Regex::new(concat!(r"^((\\.|(\$\{[^}]*})|", "[^\"$])+|\"|\\$\\()")).unwrap();
+    static ref DQ_STRING_RE: Regex = Regex::new(concat!(r"^((\\.|(\$\{[^}]*})|(\$($|[^(]))|", "[^\"$])+|\"|\\$\\()")).unwrap();
     static ref WHITESPACE_RE: Regex = Regex::new(r"^([\s&&[^\n]]|\\\n)+").unwrap(); // newlines split statements
     static ref KEYWORD_RE: Regex = Regex::new(r"^(\[\[|case|do|done|elif|else|esac|fi|for|function|if|in|select|then|time|until|while)\s").unwrap();
     static ref NEW_STATEMENT_RE: Regex = Regex::new(r"^(;|\n|&&|\|\|)").unwrap();
@@ -150,6 +150,8 @@ mod test {
         assert_parse_line!("echo ", "\"123", "echo \"123");
         assert_parse_line!("echo ", "\"12$(cat)3\"", "echo \"12$(cat)3\"");
         assert_parse_line!("echo \"12$(ca", "t)3\"", "cat");
+        assert_parse_line!("echo \"12$ca", "t3\"", "echo \"12$cat3\"");
+        assert_parse_line!("echo \"as$", "", "echo \"as$");
         assert_parse_line!("echo", " '12(3'", "echo '12(3'");
         assert_parse_line!("echo", " '12(3", "echo '12(3");
         assert_parse_line!("echo", " $'12\\'3'", "echo $'12\\'3'");

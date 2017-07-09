@@ -149,6 +149,25 @@ _fzf_bash_completion_complete() {
     done
     shift
 
+    # hack: hijack compopt
+    compopt() {
+        while [ "$#" -gt 0 ]; do
+            local val
+            if [ "$1" = -o ]; then
+                val=1
+            elif [ "$1" = +o ]; then
+                val=0
+            else
+                break
+            fi
+
+            if [[ "$2" =~ bashdefault|default|dirnames|filenames|noquote|nosort|nospace|plusdirs ]]; then
+                echo "local compl_$2=$val" >&${compopts}
+            fi
+            shift 2
+        done
+    }
+
     (
         if [ -n "${compgen_actions[*]}" ]; then
             compgen "${compgen_opts[@]}" -- "$2"
@@ -177,6 +196,9 @@ _fzf_bash_completion_complete() {
         fi
     ) | _fzf_bash_completion_apply_xfilter "$compl_xfilter" \
       | sed "s/.*/${compl_prefix}&${compl_suffix}/"
+
+    # remove compopt hack
+    unset compopt
 }
 
 _fzf_bash_completion_apply_xfilter() {
@@ -192,20 +214,3 @@ _fzf_bash_completion_apply_xfilter() {
     fi
 }
 
-compopt() {
-    while [ "$#" -gt 0 ]; do
-        local val
-        if [ "$1" = -o ]; then
-            val=1
-        elif [ "$1" = +o ]; then
-            val=0
-        else
-            break
-        fi
-
-        if [[ "$2" =~ bashdefault|default|dirnames|filenames|noquote|nosort|nospace|plusdirs ]]; then
-            echo "local compl_$2=$val" >&${compopts}
-        fi
-        shift 2
-    done
-}

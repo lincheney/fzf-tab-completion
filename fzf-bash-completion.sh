@@ -67,12 +67,17 @@ fzf_bash_completion_selector() {
 }
 
 _fzf_bash_completion_get_results() {
-    if [ "$COMP_CWORD" == 0 ]; then
-        compgen -abc -- "$2"
-    elif [[ "$COMP_WORD_START" =~ .*\$\{?([A-Za-z0-9_]*)$ ]]; then
-        local prefix="${BASH_REMATCH[1]}"
-        compgen -v -P "${COMP_WORD_START:: -${#prefix}}" -- "$prefix"
+    if [[ "$COMP_WORD_START" =~ .*\$\{?([A-Za-z0-9_]*)$ ]]; then
+        local filter="${BASH_REMATCH[1]}"
+        if [ -n "$filter" ]; then
+            local prefix="${COMP_WORD_START:: -${#filter}}"
+        else
+            local prefix="$COMP_WORD_START"
+        fi
+        compgen -v -P "$prefix" -- "$filter"
         compopt -o noquote
+    elif [ "$COMP_CWORD" == 0 ]; then
+        compgen -abc -- "$2"
     else
         _fzf_bash_completion_complete "$@"
     fi

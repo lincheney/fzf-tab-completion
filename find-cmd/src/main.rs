@@ -92,12 +92,12 @@ fn parse_line(line: &str, point: usize, end: Option<&str>) -> Match {
 
         if start == Some(i) {
             if let Some(m) = KEYWORD_RE.find(&line[i..]) {
-                start = None;
                 i += m.end();
                 if i > point {
                     i -= 1;
                     break;
                 }
+                start = None;
                 continue;
             }
         }
@@ -172,6 +172,7 @@ mod test {
         assert_parse_line!("time echo", " 123", "echo 123");
         assert_parse_line!("until echo", " 123", "echo 123");
         assert_parse_line!("while echo", " 123", "echo 123");
+        assert_parse_line!("whil", "e echo 123", "while");
 
         assert_parse_line!("echo", " 123 ; echo 456", "echo 123 ");
         assert_parse_line!("echo 123 ; echo", " 456", "echo 456");

@@ -1,4 +1,5 @@
 extern crate regex;
+#[macro_use] extern crate lazy_static;
 use regex::Regex;
 
 #[derive(Debug)]
@@ -8,11 +9,19 @@ pub struct Match {
     pub found: bool,
 }
 
+lazy_static! {
+    static ref DQ_STRING_RE: Regex = Regex::new(concat!(r"^((\\.|(\$\{[^}]*})|", "[^\"$])+|\"|\\$\\()")).unwrap();
+    static ref SQ_STRING_RE: Regex = Regex::new(r"^'[^']*('|$)").unwrap();
+    static ref ESCAPED_STRING_RE: Regex = Regex::new(r"^\$'(\\.|[^'])*('|$)").unwrap();
+    static ref WHITESPACE_RE: Regex = Regex::new(r"^[ \t]+").unwrap();
+    static ref KEYWORD_RE: Regex = Regex::new(r"^(\[\[|case|do|done|elif|else|esac|fi|for|function|if|in|select|then|time|until|while)\s").unwrap();
+    static ref NEW_STATEMENT_RE: Regex = Regex::new(r"^(;|\n|&&|\|\|)").unwrap();
+}
+
 fn parse_dq_string(line: &str, point: usize) -> Match {
     let mut i = 0;
-    let re = Regex::new(concat!(r"^((\\.|(\$\{[^}]*})|", "[^\"$])+|\"|\\$\\()")).unwrap();
     while i < line.len() {
-        match re.find(&line[i..]).unwrap().as_str() {
+        match DQ_STRING_RE.find(&line[i..]).unwrap().as_str() {
             "$(" => {
                 i += 2;
                 let m = parse_line(&line[i..], if point<i { 0 } else { point-i }, Some(")"));
@@ -33,7 +42,7 @@ fn parse_line(line: &str, point: usize, end: Option<&str>) -> Match {
     let mut start: Option<usize> = None;
 
     while i < line.len() {
-        if let Some(m) = Regex::new(r"^[ \t]+").unwrap().find(&line[i..]) {
+        if let Some(m) = WHITESPACE_RE.find(&line[i..]) {
             i += m.end();
             continue;
         }
@@ -82,20 +91,19 @@ fn parse_line(line: &str, point: usize, end: Option<&str>) -> Match {
             }
         }
 
-        if let Some(m) = Regex::new(r"^'[^']*('|$)").unwrap().find(&line[i..]) {
+        if let Some(m) = SQ_STRING_RE.find(&line[i..]) {
             // ' string
             i += m.end();
             continue;
         }
-        if let Some(m) = Regex::new(r"^\$'(\\.|[^'])*('|$)").unwrap().find(&line[i..]) {
+        if let Some(m) = ESCAPED_STRING_RE.find(&line[i..]) {
             // $' string
             i += m.end();
             continue;
         }
 
         if start == Some(i) {
-            let regex = Regex::new(r"^(\[\[|case|do|done|elif|else|esac|fi|for|function|if|in|select|then|time|until|while)\s").unwrap();
-            if let Some(m) = regex.find(&line[i..]) {
+            if let Some(m) = KEYWORD_RE.find(&line[i..]) {
                 start = None;
                 i += m.end();
                 if i > point {
@@ -106,7 +114,7 @@ fn parse_line(line: &str, point: usize, end: Option<&str>) -> Match {
             }
         }
 
-        if let Some(m) = Regex::new(r"^(;|\n|&&|\|\|)").unwrap().find(&line[i..]) {
+        if let Some(m) = NEW_STATEMENT_RE.find(&line[i..]) {
             if i > point { break; }
             start = None;
             i += m.end();

@@ -40,10 +40,13 @@ fzf_bash_completion() {
         prev="${COMP_WORDS[$COMP_CWORD-1]}"
     fi
     local cur="${COMP_WORDS[$COMP_CWORD]}"
+    local COMP_WORD_START="${first[-1]}"
+    local COMP_WORD_END="${cur:${#cur_start}}"
+
     local choice="$(fzf_bash_completer "$cmd" "$cur" "$prev")"
     if [ -n "$choice" ]; then
-        READLINE_LINE="${READLINE_LINE::$READLINE_POINT}${choice}${READLINE_LINE:$READLINE_POINT}"
-        READLINE_POINT="$(( $READLINE_POINT+${#choice} ))"
+        READLINE_LINE="${READLINE_LINE::$READLINE_POINT-${#COMP_WORD_START}}${choice}${READLINE_LINE:$READLINE_POINT}"
+        READLINE_POINT="$(( $READLINE_POINT+${#choice}-${#COMP_WORD_START} ))"
     fi
 
     # restore initial cursor position
@@ -58,23 +61,53 @@ fzf_bash_completer() {
 }
 
 fzf_bash_completion_selector() {
-    sed -r "s/^.{${#2}}/&\x7f/" | \
-        FZF_DEFAULT_OPTS="--height ${FZF_TMUX_HEIGHT:-40%} --reverse $FZF_DEFAULT_OPTS $FZF_COMPLETION_OPTS" fzf -1 -0 --bind=space:accept +e --prompt "> $2" -d '\x7f' --nth 2 | \
+    sed -r "s/^.{${#COMP_WORD_START}}/&\x7f/" | \
+        FZF_DEFAULT_OPTS="--height ${FZF_TMUX_HEIGHT:-40%} --reverse $FZF_DEFAULT_OPTS $FZF_COMPLETION_OPTS" fzf -1 -0 --bind=space:accept +e --prompt "> $COMP_WORD_START" -d '\x7f' --nth 2 | \
         tr -d $'\x7f'
 }
 
-_fzf_bash_completion_default() {
+_fzf_bash_completion_get_results() {
     if [ "$COMP_CWORD" == 0 ]; then
         compgen -abc -- "$2"
-        return
+    elif [[ "$COMP_WORD_START" =~ .*\$\{?([A-Za-z0-9_]*)$ ]]; then
+        local prefix="${BASH_REMATCH[1]}"
+        compgen -v -P "${COMP_WORD_START:: -${#prefix}}" -- "$prefix"
+        compopt -o noquote
+    else
+        _fzf_bash_completion_complete "$@"
     fi
+}
 
+_fzf_bash_completion_default() {
     local results
+
+    # hack: hijack compopt
+    compopt() {
+        while [ "$#" -gt 0 ]; do
+            local val
+            if [ "$1" = -o ]; then
+                val=1
+            elif [ "$1" = +o ]; then
+                val=0
+            else
+                break
+            fi
+
+            if [[ "$2" =~ bashdefault|default|dirnames|filenames|noquote|nosort|nospace|plusdirs ]]; then
+                echo "local compl_$2=$val" >&${compopts}
+            fi
+            shift 2
+        done
+    }
+
     eval "$(
         exec {compopts}>&1
-        results="$(_fzf_bash_completion_complete "$@")"
+        results="$(_fzf_bash_completion_get_results "$@")"
         printf results=%q "$results"
     )"
+
+    # remove compopt hack
+    unset compopt
 
     if [ -z "$results" ]; then
         local compgen_opts=()
@@ -102,7 +135,6 @@ _fzf_bash_completion_default() {
 
     local choice="$(echo "$results" | sort -u | fzf_bash_completion_selector "$@")"
     [ -z "$choice" ] && return
-    choice="${choice:${#cur}}"
     [ "$compl_noquote" != 1 ] && choice="$(printf %q "$choice")"
     [ "$compl_nospace" != 1 ] && choice="$choice "
     [[ "$compl_filenames" == *1* ]] && choice="${choice/%\/ //}"
@@ -149,25 +181,6 @@ _fzf_bash_completion_complete() {
     done
     shift
 
-    # hack: hijack compopt
-    compopt() {
-        while [ "$#" -gt 0 ]; do
-            local val
-            if [ "$1" = -o ]; then
-                val=1
-            elif [ "$1" = +o ]; then
-                val=0
-            else
-                break
-            fi
-
-            if [[ "$2" =~ bashdefault|default|dirnames|filenames|noquote|nosort|nospace|plusdirs ]]; then
-                echo "local compl_$2=$val" >&${compopts}
-            fi
-            shift 2
-        done
-    }
-
     (
         if [ -n "${compgen_actions[*]}" ]; then
             compgen "${compgen_opts[@]}" -- "$2"
@@ -196,9 +209,6 @@ _fzf_bash_completion_complete() {
         fi
     ) | _fzf_bash_completion_apply_xfilter "$compl_xfilter" \
       | sed "s/.*/${compl_prefix}&${compl_suffix}/"
-
-    # remove compopt hack
-    unset compopt
 }
 
 _fzf_bash_completion_apply_xfilter() {

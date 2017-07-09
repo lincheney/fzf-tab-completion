@@ -75,7 +75,6 @@ _fzf_bash_completion_get_results() {
             local prefix="$COMP_WORD_START"
         fi
         compgen -v -P "$prefix" -- "$filter"
-        compopt -o noquote
     elif [ "$COMP_CWORD" == 0 ]; then
         compgen -abc -- "$2"
     else
@@ -140,7 +139,7 @@ _fzf_bash_completion_default() {
 
     local choice="$(echo "$results" | sort -u | fzf_bash_completion_selector "$@")"
     [ -z "$choice" ] && return
-    [ "$compl_noquote" != 1 ] && choice="$(printf %q "$choice")"
+    [ "$compl_noquote" != 1 -a "$compl_filenames" = 1 ] && choice="$(printf %q "$choice")"
     [ "$compl_nospace" != 1 ] && choice="$choice "
     [[ "$compl_filenames" == *1* ]] && choice="${choice/%\/ //}"
     echo -n "$choice"

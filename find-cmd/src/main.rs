@@ -1,5 +1,5 @@
-extern crate regex;
 #[macro_use] extern crate lazy_static;
+extern crate regex;
 use regex::Regex;
 
 #[derive(Debug)]
@@ -9,13 +9,24 @@ pub struct Match {
     pub found: bool,
 }
 
+impl Match {
+    pub fn offset(&self, x: usize) -> Match {
+        Match{ start: self.start+x, end: self.end+x, found: self.found }
+    }
+}
+
 lazy_static! {
     static ref DQ_STRING_RE: Regex = Regex::new(concat!(r"^((\\.|(\$\{[^}]*})|", "[^\"$])+|\"|\\$\\()")).unwrap();
-    static ref SQ_STRING_RE: Regex = Regex::new(r"^'[^']*('|$)").unwrap();
-    static ref ESCAPED_STRING_RE: Regex = Regex::new(r"^\$'(\\.|[^'])*('|$)").unwrap();
-    static ref WHITESPACE_RE: Regex = Regex::new(r"^[ \t]+").unwrap();
+    static ref WHITESPACE_RE: Regex = Regex::new(r"^([\s&&[^\n]]|\\\n)+").unwrap(); // newlines split statements
     static ref KEYWORD_RE: Regex = Regex::new(r"^(\[\[|case|do|done|elif|else|esac|fi|for|function|if|in|select|then|time|until|while)\s").unwrap();
     static ref NEW_STATEMENT_RE: Regex = Regex::new(r"^(;|\n|&&|\|\|)").unwrap();
+    static ref TOKEN_RE: Regex = Regex::new(concat!(
+            r"^(",
+            r"('[^']*('|$))|", // ' string
+            r"(\$'(\\.|[^'])*('|$))|", // $' string
+            "(\\\\.|[^\\s'\"(){}])+", // other
+            r")",
+    )).unwrap();
 }
 
 fn parse_dq_string(line: &str, point: usize) -> Match {
@@ -25,9 +36,7 @@ fn parse_dq_string(line: &str, point: usize) -> Match {
             "$(" => {
                 i += 2;
                 let m = parse_line(&line[i..], if point<i { 0 } else { point-i }, Some(")"));
-                if m.found {
-                    return Match{start: i+m.start, end: i+m.end, found: m.found};
-                }
+                if m.found { return m.offset(i); }
                 i += m.end;
             },
             "\"" => { i += 1; break; },
@@ -49,21 +58,12 @@ fn parse_line(line: &str, point: usize, end: Option<&str>) -> Match {
 
         start = start.or(Some(i));
 
-        match line[i..].chars().next().unwrap() {
-            '"' => {
-                i += 1;
-                let m = parse_dq_string(&line[i..], if point<i { 0 } else { point-i });
-                if m.found {
-                    return Match{start: i+m.start, end: i+m.end, found: m.found};
-                }
-                i += m.end;
-                continue;
-            },
-            '\\' => {
-                i += 2;
-                continue;
-            },
-            _ => (),
+        if line[i..].starts_with('"') {
+            i += 1;
+            let m = parse_dq_string(&line[i..], if point<i { 0 } else { point-i });
+            if m.found { return m.offset(i); }
+            i += m.end;
+            continue;
         }
 
         let block_end = if line[i..].starts_with('(') {
@@ -78,9 +78,7 @@ fn parse_line(line: &str, point: usize, end: Option<&str>) -> Match {
 
         if block_end.is_some() {
             let m = parse_line(&line[i..], if point<i { 0 } else { point-i }, block_end);
-            if m.found {
-                return Match{start: i+m.start, end: i+m.end, found: m.found};
-            }
+            if m.found { return m.offset(i); }
             i += m.end;
             continue;
         }
@@ -89,17 +87,6 @@ fn parse_line(line: &str, point: usize, end: Option<&str>) -> Match {
             if line[i..].starts_with(end) {
                 break;
             }
-        }
-
-        if let Some(m) = SQ_STRING_RE.find(&line[i..]) {
-            // ' string
-            i += m.end();
-            continue;
-        }
-        if let Some(m) = ESCAPED_STRING_RE.find(&line[i..]) {
-            // $' string
-            i += m.end();
-            continue;
         }
 
         if start == Some(i) {
@@ -121,7 +108,12 @@ fn parse_line(line: &str, point: usize, end: Option<&str>) -> Match {
             continue;
         }
 
-        i += 1;
+        if let Some(m) = TOKEN_RE.find(&line[i..]) {
+            i += m.end();
+            continue;
+        }
+
+        i += 1; // fallback
     }
 
     let start = start.unwrap_or(i);
@@ -148,6 +140,7 @@ mod test {
     fn test_parse_line() {
         assert_parse_line!("echo", " 123", "echo 123");
         assert_parse_line!(" echo", " 123", "echo 123");
+        assert_parse_line!("echo \\\n", " 123", "echo \\\n 123");
 
         assert_parse_line!("echo ", "\"123\"", "echo \"123\"");
         assert_parse_line!("echo ", "\"123", "echo \"123");

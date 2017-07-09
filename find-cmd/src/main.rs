@@ -1,6 +1,7 @@
 #[macro_use] extern crate lazy_static;
 extern crate regex;
 use regex::Regex;
+use std::env;
 
 #[derive(Debug)]
 pub struct Match {
@@ -121,7 +122,10 @@ fn parse_line(line: &str, point: usize, end: Option<&str>) -> Match {
 }
 
 fn main() {
-    println!("Hello, world!");
+    let line = env::var("READLINE_LINE").expect("expected $READLINE_LINE");
+    let point = usize::from_str_radix(&env::var("READLINE_POINT").expect("expected $READLINE_POINT"), 10).expect("expected uint for $READLINE_POINT");
+    let m = parse_line(&line, point, None);
+    println!("{} {}", m.start, m.end);
 }
 
 #[cfg(test)]

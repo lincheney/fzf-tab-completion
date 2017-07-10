@@ -147,9 +147,8 @@ _fzf_bash_completion_complete() {
             local compl_xfilter="$2"
             shift
         elif [ "$1" = -o ]; then
-            if [[ "$2" =~ bashdefault|default|dirnames|filenames|noquote|nosort|nospace|plusdirs ]]; then
-                eval "compl_$2=1"
-            fi
+            _fzf_bash_completion_compopt -o "$2"
+            shift
         elif [ "$1" = -A ] ; then
             local compgen_opts+=( "$1" "$2" )
             shift

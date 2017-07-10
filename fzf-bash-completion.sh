@@ -16,7 +16,7 @@ fzf_bash_completion() {
     local initial=( $(_fzf_bash_completion_getpos) )
     printf '\e[%i;%iH' "$(( postprint[0]+1 ))" 0
 
-    local find_cmd="$(dirname "${BASH_SOURCE[0]}")/find-cmd/target/release/find-cmd"
+    local find_cmd="$(dirname "$(readlink -e "${BASH_SOURCE[0]}")")/find-cmd/target/release/find-cmd"
     read start end rest < <("$find_cmd")
     local point="$(( READLINE_POINT - start ))"
     local line="${READLINE_LINE:$start:$end-$start}"

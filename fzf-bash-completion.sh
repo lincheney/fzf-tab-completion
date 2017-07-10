@@ -83,6 +83,7 @@ _fzf_bash_completion_get_results() {
 
 _fzf_bash_completion_default() {
     local results
+    local compl_bashdefault compl_default compl_dirnames compl_filenames compl_noquote compl_nosort compl_nospace compl_plusdirs
 
     # hack: hijack compopt
     compopt() { _fzf_bash_completion_compopt "$@"; }
@@ -147,7 +148,7 @@ _fzf_bash_completion_complete() {
             shift
         elif [ "$1" = -o ]; then
             if [[ "$2" =~ bashdefault|default|dirnames|filenames|noquote|nosort|nospace|plusdirs ]]; then
-                eval "local compl_$2=1"
+                eval "compl_$2=1"
             fi
         elif [ "$1" = -A ] ; then
             local compgen_opts+=( "$1" "$2" )

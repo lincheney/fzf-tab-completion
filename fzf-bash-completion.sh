@@ -42,7 +42,7 @@ fzf_bash_completion() {
     local COMP_WORD_END="${cur:${#cur_start}}"
 
     local COMPREPLY=
-    fzf_bash_completer "$cmd" "$cur" "$prev"
+    fzf_bash_completer "$cmd" "$COMP_WORD_START" "$prev"
     if [ -n "$COMPREPLY" ]; then
         READLINE_LINE="${READLINE_LINE::$READLINE_POINT-${#COMP_WORD_START}}${COMPREPLY}${READLINE_LINE:$READLINE_POINT}"
         READLINE_POINT="$(( $READLINE_POINT+${#COMPREPLY}-${#COMP_WORD_START} ))"
@@ -60,18 +60,18 @@ fzf_bash_completer() {
 }
 
 fzf_bash_completion_selector() {
-    sed -r "s/^.{${#COMP_WORD_START}}/&\x7f/" | \
-        FZF_DEFAULT_OPTS="--height ${FZF_TMUX_HEIGHT:-40%} --reverse $FZF_DEFAULT_OPTS $FZF_COMPLETION_OPTS" fzf -1 -0 --bind=space:accept +e --prompt "> $COMP_WORD_START" -d '\x7f' --nth 2 | \
+    sed -r "s/^.{${#2}}/&\x7f/" | \
+        FZF_DEFAULT_OPTS="--height ${FZF_TMUX_HEIGHT:-40%} --reverse $FZF_DEFAULT_OPTS $FZF_COMPLETION_OPTS" fzf -1 -0 --bind=space:accept +e --prompt "> $2" -d '\x7f' --nth 2 | \
         tr -d $'\x7f'
 }
 
 _fzf_bash_completion_get_results() {
-    if [[ "$COMP_WORD_START" =~ .*\$\{?([A-Za-z0-9_]*)$ ]]; then
+    if [[ "$2" =~ .*\$\{?([A-Za-z0-9_]*)$ ]]; then
         local filter="${BASH_REMATCH[1]}"
         if [ -n "$filter" ]; then
-            local prefix="${COMP_WORD_START:: -${#filter}}"
+            local prefix="${2:: -${#filter}}"
         else
-            local prefix="$COMP_WORD_START"
+            local prefix="$2"
         fi
         COMPREPLY="$(compgen -v -P "$prefix" -- "$filter")"
     elif [ "$COMP_CWORD" == 0 ]; then

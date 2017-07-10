@@ -87,9 +87,10 @@ _fzf_bash_completion_default() {
 
     # hack: hijack compopt
     compopt() { _fzf_bash_completion_compopt "$@"; }
-
     _fzf_bash_completion_get_results "$@"
-
+    while [ "$?" = 124 ]; do
+        _fzf_bash_completion_get_results "$@"
+    done
     # remove compopt hack
     unset compopt
 

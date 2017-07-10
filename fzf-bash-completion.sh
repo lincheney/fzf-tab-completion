@@ -41,10 +41,11 @@ fzf_bash_completion() {
     local COMP_WORD_START="${first[-1]}"
     local COMP_WORD_END="${cur:${#cur_start}}"
 
-    local choice="$(fzf_bash_completer "$cmd" "$cur" "$prev")"
-    if [ -n "$choice" ]; then
-        READLINE_LINE="${READLINE_LINE::$READLINE_POINT-${#COMP_WORD_START}}${choice}${READLINE_LINE:$READLINE_POINT}"
-        READLINE_POINT="$(( $READLINE_POINT+${#choice}-${#COMP_WORD_START} ))"
+    local COMPREPLY=
+    fzf_bash_completer "$cmd" "$cur" "$prev"
+    if [ -n "$COMPREPLY" ]; then
+        READLINE_LINE="${READLINE_LINE::$READLINE_POINT-${#COMP_WORD_START}}${COMPREPLY}${READLINE_LINE:$READLINE_POINT}"
+        READLINE_POINT="$(( $READLINE_POINT+${#COMPREPLY}-${#COMP_WORD_START} ))"
     fi
 
     # restore initial cursor position
@@ -72,9 +73,9 @@ _fzf_bash_completion_get_results() {
         else
             local prefix="$COMP_WORD_START"
         fi
-        compgen -v -P "$prefix" -- "$filter"
+        readarray -t COMPREPLY < <(compgen -v -P "$prefix" -- "$filter")
     elif [ "$COMP_CWORD" == 0 ]; then
-        compgen -abc -- "$2"
+        readarray -t COMPREPLY < <(compgen -abc -- "$2")
     else
         _fzf_bash_completion_complete "$@"
     fi
@@ -96,56 +97,53 @@ _fzf_bash_completion_default() {
             fi
 
             if [[ "$2" =~ bashdefault|default|dirnames|filenames|noquote|nosort|nospace|plusdirs ]]; then
-                echo "local compl_$2=$val" >&${compopts}
+                eval "compl_$2=$val"
             fi
             shift 2
         done
     }
 
-    eval "$(
-        exec {compopts}>&1
-        results="$(_fzf_bash_completion_get_results "$@")"
-        printf results=%q "$results"
-    )"
+    _fzf_bash_completion_get_results "$@"
 
     # remove compopt hack
     unset compopt
 
-    if [ -z "$results" ]; then
+    COMPREPLY="$(printf %s\\n "${COMPREPLY[@]}")"
+    if [ -z "$COMPREPLY" ]; then
         local compgen_opts=()
         [ "$compl_bashdefault" = 1 ] && compgen_opts+=( -o bashdefault )
         [ "$compl_default" = 1 ] && compgen_opts+=( -o default )
         [ "$compl_dirnames" = 1 ] && compgen_opts+=( -o dirnames )
         if [ -n "${compgen_opts[*]}" ]; then
-            results="$(compgen "${compgen_opts[@]}" -- "$2")"
+            COMPREPLY="$(compgen "${compgen_opts[@]}" -- "$2")"
         fi
     fi
 
     if [ "$compl_plusdirs" = 1 ]; then
-        results+=$'\n'"$(compgen -o dirnames -- "$2")"
+        COMPREPLY+=$'\n'"$(compgen -o dirnames -- "$2")"
     fi
 
     compl_filenames="${compl_filenames}${compl_plusdirs}${compl_dirnames}"
     if [[ "$compl_filenames" == *1* ]]; then
-        results="$(
+        COMPREPLY="$(
             while IFS= read line; do
                 [ -d "$line" ] && line="$line/"
                 echo "$line"
-            done <<<"$results"
+            done <<<"$COMPREPLY"
         )"
     fi
 
-    local choice="$(echo "$results" | sort -u | fzf_bash_completion_selector "$@")"
-    [ -z "$choice" ] && return
+    COMPREPLY="$(<<<"$COMPREPLY" sort -u | fzf_bash_completion_selector "$@")"
+    [ -z "$COMPREPLY" ] && return
     [ "$compl_noquote" != 1 -a "$compl_filenames" = 1 ] && choice="$(printf %q "$choice")"
     [ "$compl_nospace" != 1 ] && choice="$choice "
     [[ "$compl_filenames" == *1* ]] && choice="${choice/%\/ //}"
-    echo -n "$choice"
 }
 
 _fzf_bash_completion_complete() {
     local compgen_actions=()
-    set -- $(complete -p "$1" 2>/dev/null || complete -p '') "$@"
+    local compspec="$(complete -p "$1" 2>/dev/null || complete -p '')"
+    set -- $compspec "$@"
     shift
     while [ "$#" -gt 4 ]; do
         if [ "$1" = -F ]; then
@@ -165,7 +163,7 @@ _fzf_bash_completion_complete() {
             shift
         elif [ "$1" = -o ]; then
             if [[ "$2" =~ bashdefault|default|dirnames|filenames|noquote|nosort|nospace|plusdirs ]]; then
-                echo "local compl_$2=1" >&${compopts}
+                eval "local compl_$2=1"
             fi
         elif [ "$1" = -A ] ; then
             local compgen_opts+=( "$1" "$2" )
@@ -183,34 +181,41 @@ _fzf_bash_completion_complete() {
     done
     shift
 
-    (
-        if [ -n "${compgen_actions[*]}" ]; then
-            compgen "${compgen_opts[@]}" -- "$2"
+    COMPREPLY=()
+    if [ -n "$compl_function" ]; then
+        "$compl_function" "$@" >/dev/null
+        if [ "$?" = 124 ]; then
+            local newcompspec="$(complete -p "$1" 2>/dev/null || complete -p '')"
+            if [ "$newcompspec" != "$compspec" ]; then
+                return 124
+            fi
         fi
+    fi
 
-        if [ -n "$compl_globpat" ]; then
-            printf %s\\n "$compl_globpat"
-        fi
+    COMPREPLY="$(
+        (
+            if [ -n "${compgen_actions[*]}" ]; then
+                compgen "${compgen_opts[@]}" -- "$2"
+            fi
 
-        if [ -n "$compl_wordlist" ]; then
-            eval "printf '%s\\n' $compl_wordlist"
-        fi
+            if [ -n "$compl_globpat" ]; then
+                printf %s\\n "$compl_globpat"
+            fi
 
-        COMPREPLY=()
-        if [ -n "$compl_function" ]; then
-            "$compl_function" "$@" >/dev/null
-            while [ "$?" = 124 ]; do
-                "$compl_function" "$@" >/dev/null
-            done
+            if [ -n "$compl_wordlist" ]; then
+                eval "printf '%s\\n' $compl_wordlist"
+            fi
+
             printf %s\\n "${COMPREPLY[@]}"
-        fi
 
-        if [ -n "$compl_command" ]; then
-            COMP_LINE="$COMP_LINE" COMP_POINT="$COMP_POINT" COMP_KEY="$COMP_KEY" COMP_TYPE="$COMP_TYPE" \
-                $compl_command "$@"
-        fi
-    ) | _fzf_bash_completion_apply_xfilter "$compl_xfilter" \
-      | sed "s/.*/${compl_prefix}&${compl_suffix}/"
+            if [ -n "$compl_command" ]; then
+                COMP_LINE="$COMP_LINE" COMP_POINT="$COMP_POINT" COMP_KEY="$COMP_KEY" COMP_TYPE="$COMP_TYPE" \
+                    $compl_command "$@"
+            fi
+        ) | _fzf_bash_completion_apply_xfilter "$compl_xfilter" \
+          | sed "s/.*/${compl_prefix}&${compl_suffix}/"
+    )"
+    readarray -t COMPREPLY <<<"$COMPREPLY"
 }
 
 _fzf_bash_completion_apply_xfilter() {

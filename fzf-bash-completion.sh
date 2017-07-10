@@ -10,7 +10,8 @@ _fzf_bash_completion_getpos() {
 
 fzf_bash_completion() {
     # draw first to minimise flicker
-    printf '\e[s%s' "${PS1@P}$READLINE_LINE"
+    local prompt="$( (echo "${PS1@P}") 2>/dev/null )"
+    printf '\e[s%s' "${prompt}${READLINE_LINE}"
     local postprint=( $(_fzf_bash_completion_getpos) )
     printf '\e[u'
     local initial=( $(_fzf_bash_completion_getpos) )

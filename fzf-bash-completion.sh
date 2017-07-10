@@ -127,7 +127,13 @@ _fzf_bash_completion_default() {
 
 _fzf_bash_completion_complete() {
     local compgen_actions=()
-    local compspec="$(complete -p "$1" 2>/dev/null || complete -p '')"
+    local compspec="$(complete -p "$1" 2>/dev/null)"
+
+    if [ -z "$compspec" ]; then
+        _completion_loader "$@"
+        compspec="$(complete -p "$1" 2>/dev/null || complete -p '')"
+    fi
+
     set -- $compspec "$@"
     shift
     while [ "$#" -gt 4 ]; do

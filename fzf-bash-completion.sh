@@ -14,7 +14,7 @@ fzf_bash_completion() {
     local postprint=( $(_fzf_bash_completion_getpos) )
     printf '\e[u'
     local initial=( $(_fzf_bash_completion_getpos) )
-    printf '\e[%i;%iH' "${postprint[@]}"
+    printf '\e[%i;%iH' "$(( postprint[0]+1 ))" 0
 
     local find_cmd="$(dirname "${BASH_SOURCE[0]}")/find-cmd/target/release/find-cmd"
     read start end rest < <("$find_cmd")
@@ -49,9 +49,7 @@ fzf_bash_completion() {
     fi
 
     # restore initial cursor position
-    if [ "$((postprint[0]-initial[0]))" != 0 ]; then
-        printf '\e[%iA' "$((postprint[0]-initial[0]))"
-    fi
+    printf '\e[%iA' "$((postprint[0]-initial[0]+1))"
     printf '\r'
 }
 
@@ -60,10 +58,21 @@ fzf_bash_completer() {
 }
 
 fzf_bash_completion_selector() {
-    sed -r "s/^.{${#2}}/&\x7f/" | \
-        FZF_DEFAULT_OPTS="--height ${FZF_TMUX_HEIGHT:-40%} --reverse $FZF_DEFAULT_OPTS $FZF_COMPLETION_OPTS" \
-        fzf -1 -0 --bind=space:accept +e --prompt "> $2" -d '\x7f' --nth 2 | \
-        tr -d $'\x7f'
+    local input="$(sed -r "s/^.{${#2}}/&\x7f/")"
+    local query choices
+    while true; do
+        choices="$(query="$query" _fzf_bash_completion_fzf "$@" <<<"$input")"
+        if [ "$?" != 130 -o "${choices::2}" != 'q=' ]; then
+            break
+        fi
+        query="${choices:2}"
+    done
+    tr -d $'\x7f' <<<"$choices"
+}
+
+_fzf_bash_completion_fzf() {
+    FZF_DEFAULT_OPTS="--height ${FZF_TMUX_HEIGHT:-40%} --reverse $FZF_DEFAULT_OPTS $FZF_COMPLETION_OPTS" \
+        fzf -1 -0 --bind=space:accept,tab:execute'[echo q={q}]'+abort +e --query "$query" --prompt "> $2" -d '\x7f' --nth 2
 }
 
 _fzf_bash_completion_expand_alias() {
@@ -133,9 +142,9 @@ _fzf_bash_completion_default() {
 
     COMPREPLY="$(<<<"$COMPREPLY" sort -u | fzf_bash_completion_selector "$@")"
     [ -z "$COMPREPLY" ] && return
-    [ "$compl_noquote" != 1 -a "$compl_filenames" = 1 ] && choice="$(printf %q "$choice")"
-    [ "$compl_nospace" != 1 ] && choice="$choice "
-    [[ "$compl_filenames" == *1* ]] && choice="${choice/%\/ //}"
+    [ "$compl_noquote" != 1 -a "$compl_filenames" = 1 ] && COMPREPLY="$(printf %q "$COMPREPLY")"
+    [ "$compl_nospace" != 1 ] && COMPREPLY="$COMPREPLY "
+    [[ "$compl_filenames" == *1* ]] && COMPREPLY="${COMPREPLY/%\/ //}"
 }
 
 _fzf_bash_completion_complete() {

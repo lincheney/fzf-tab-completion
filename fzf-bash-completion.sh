@@ -85,23 +85,7 @@ _fzf_bash_completion_default() {
     local results
 
     # hack: hijack compopt
-    compopt() {
-        while [ "$#" -gt 0 ]; do
-            local val
-            if [ "$1" = -o ]; then
-                val=1
-            elif [ "$1" = +o ]; then
-                val=0
-            else
-                break
-            fi
-
-            if [[ "$2" =~ bashdefault|default|dirnames|filenames|noquote|nosort|nospace|plusdirs ]]; then
-                eval "compl_$2=$val"
-            fi
-            shift 2
-        done
-    }
+    compopt() { _fzf_bash_completion_compopt "$@"; }
 
     _fzf_bash_completion_get_results "$@"
 
@@ -231,3 +215,20 @@ _fzf_bash_completion_apply_xfilter() {
     fi
 }
 
+_fzf_bash_completion_compopt() {
+    while [ "$#" -gt 0 ]; do
+        local val
+        if [ "$1" = -o ]; then
+            val=1
+        elif [ "$1" = +o ]; then
+            val=0
+        else
+            break
+        fi
+
+        if [[ "$2" =~ bashdefault|default|dirnames|filenames|noquote|nosort|nospace|plusdirs ]]; then
+            eval "compl_$2=$val"
+        fi
+        shift 2
+    done
+}

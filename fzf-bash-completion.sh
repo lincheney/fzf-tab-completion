@@ -72,7 +72,7 @@ fzf_bash_completion_selector() {
 
 _fzf_bash_completion_fzf() {
     FZF_DEFAULT_OPTS="--height ${FZF_TMUX_HEIGHT:-40%} --reverse $FZF_DEFAULT_OPTS $FZF_COMPLETION_OPTS" \
-        fzf -1 -0 --bind=space:accept,tab:execute'[echo q={q}]'+abort +e --query "$query" --prompt "> $2" -d '\x7f' --nth 2
+        fzf -1 -0 --bind=tab:execute'[echo q={q}]'+abort --query "$query" --prompt "> $2" -d '\x7f' --nth 2
 }
 
 _fzf_bash_completion_expand_alias() {

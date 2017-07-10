@@ -73,9 +73,9 @@ _fzf_bash_completion_get_results() {
         else
             local prefix="$COMP_WORD_START"
         fi
-        readarray -t COMPREPLY < <(compgen -v -P "$prefix" -- "$filter")
+        COMPREPLY="$(compgen -v -P "$prefix" -- "$filter")"
     elif [ "$COMP_CWORD" == 0 ]; then
-        readarray -t COMPREPLY < <(compgen -abc -- "$2")
+        COMPREPLY="$(compgen -abc -- "$2")"
     else
         _fzf_bash_completion_complete "$@"
     fi
@@ -94,7 +94,6 @@ _fzf_bash_completion_default() {
     # remove compopt hack
     unset compopt
 
-    COMPREPLY="$(printf %s\\n "${COMPREPLY[@]}")"
     if [ -z "$COMPREPLY" ]; then
         local compgen_opts=()
         [ "$compl_bashdefault" = 1 ] && compgen_opts+=( -o bashdefault )
@@ -201,7 +200,6 @@ _fzf_bash_completion_complete() {
         ) | _fzf_bash_completion_apply_xfilter "$compl_xfilter" \
           | sed "s/.*/${compl_prefix}&${compl_suffix}/"
     )"
-    readarray -t COMPREPLY <<<"$COMPREPLY"
 }
 
 _fzf_bash_completion_apply_xfilter() {

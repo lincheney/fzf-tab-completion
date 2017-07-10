@@ -1,5 +1,3 @@
-# TODO: aliases, completion loading
-
 _fzf_bash_completion_sed_escape() {
     sed 's/[.[\*^$\/]/\\&/g' <<<"$1"
 }
@@ -30,6 +28,8 @@ fzf_bash_completion() {
     local COMP_CWORD="$(( ${#first[@]}-1 ))"
     local COMP_POINT="$point"
     local COMP_LINE="$line"
+
+    _fzf_bash_completion_expand_alias "${COMP_WORDS[0]}"
     local cmd="${COMP_WORDS[0]}"
     local prev
     if [ "$COMP_CWORD" = 0 ]; then
@@ -61,8 +61,21 @@ fzf_bash_completer() {
 
 fzf_bash_completion_selector() {
     sed -r "s/^.{${#2}}/&\x7f/" | \
-        FZF_DEFAULT_OPTS="--height ${FZF_TMUX_HEIGHT:-40%} --reverse $FZF_DEFAULT_OPTS $FZF_COMPLETION_OPTS" fzf -1 -0 --bind=space:accept +e --prompt "> $2" -d '\x7f' --nth 2 | \
+        FZF_DEFAULT_OPTS="--height ${FZF_TMUX_HEIGHT:-40%} --reverse $FZF_DEFAULT_OPTS $FZF_COMPLETION_OPTS" \
+        fzf -1 -0 --bind=space:accept +e --prompt "> $2" -d '\x7f' --nth 2 | \
         tr -d $'\x7f'
+}
+
+_fzf_bash_completion_expand_alias() {
+    if alias "$1" &>/dev/null; then
+        value=( ${BASH_ALIASES[$1]} )
+        if [ "${value[0]}" != "$1" ]; then
+            COMP_WORDS=( "${value[@]}" "${COMP_WORDS[@]:1}" )
+            COMP_CWORD="$(( COMP_CWORD + ${#value[@]} - 1 ))"
+            COMP_LINE="$(<<<"$COMP_LINE" sed "s/^$(_fzf_bash_completion_sed_escape "$1")/$(_fzf_bash_completion_sed_escape "${BASH_ALIASES[$1]}")/")"
+            COMP_POINT="$(( COMP_POINT + ${#BASH_ALIASES[$1]} - ${#1} ))"
+        fi
+    fi
 }
 
 _fzf_bash_completion_get_results() {
@@ -159,10 +172,10 @@ _fzf_bash_completion_complete() {
             local compgen_opts+=( "$1" "$2" )
             shift
         elif [ "$1" = -P ]; then
-            local compl_prefix="$(_sed_escape "$2")"
+            local compl_prefix="$(_fzf_bash_completion_sed_escape "$2")"
             shift
         elif [ "$1" = -S ]; then
-            local compl_suffix="$(_sed_escape "$2")"
+            local compl_suffix="$(_fzf_bash_completion_sed_escape "$2")"
             shift
         elif [[ "$1" =~ -[a-z] ]]; then
             compgen_actions+=( "$1" )

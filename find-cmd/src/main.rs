@@ -18,6 +18,7 @@ impl Match {
 
 lazy_static! {
     static ref DQ_STRING_RE: Regex = Regex::new(concat!(r"^((\\.|(\$\{[^}]*})|(\$($|[^(]))|", "[^\"$])+|\"|\\$\\()")).unwrap();
+    static ref CURLY_VAR_RE: Regex = Regex::new(r"^\$\{[^}]*($|})").unwrap();
     static ref WHITESPACE_RE: Regex = Regex::new(r"^([\s&&[^\n]]|\\\n)+").unwrap(); // newlines split statements
     static ref KEYWORD_RE: Regex = Regex::new(r"^(\[\[|case|do|done|elif|else|esac|fi|for|function|if|in|select|then|time|until|while)\s").unwrap();
     static ref NEW_STATEMENT_RE: Regex = Regex::new(r"^(;|\n|&&|\|\|)").unwrap();
@@ -64,6 +65,11 @@ fn parse_line(line: &str, point: usize, end: Option<&str>) -> Match {
             let m = parse_dq_string(&line[i..], if point<i { 0 } else { point-i });
             if m.found { return m.offset(i); }
             i += m.end;
+            continue;
+        }
+
+        if let Some(m) = CURLY_VAR_RE.find(&line[i..]) {
+            i += m.end();
             continue;
         }
 
@@ -185,6 +191,8 @@ mod test {
         assert_parse_line!("echo", " 123 || echo 456", "echo 123 ");
         assert_parse_line!("echo 123 || echo", " 456", "echo 456");
 
+        assert_parse_line!("echo ${var", "}", "echo ${var}");
+        assert_parse_line!("echo ${var", "", "echo ${var");
         assert_parse_line!("echo $(cat) ", "123", "echo $(cat) 123");
         assert_parse_line!("echo $(ca", "t) 123", "cat");
     }

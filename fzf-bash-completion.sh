@@ -10,12 +10,12 @@ _fzf_bash_completion_getpos() {
 
 fzf_bash_completion() {
     # draw first to minimise flicker
-    local prompt="$( (echo "${PS1@P}") 2>/dev/null )"
-    printf '\e[s%s' "${prompt}${READLINE_LINE}"
+    local READLINE_FULL_LINE="$( (echo "${PS1@P}") 2>/dev/null )${READLINE_LINE}"
+    printf '\e[s%s' "$READLINE_FULL_LINE"
     local postprint=( $(_fzf_bash_completion_getpos) )
     printf '\e[u'
     local initial=( $(_fzf_bash_completion_getpos) )
-    # printf '\e[%i;%iH' "$(( postprint[0] ))" 0
+    printf '\e[%i;%iH' "${postprint[@]}" >/dev/tty
 
     local find_cmd="$(dirname "$(readlink -e "${BASH_SOURCE[0]}")")/find-cmd/target/release/find-cmd"
     read start end rest < <("$find_cmd")
@@ -69,12 +69,12 @@ fzf_bash_completion_selector() {
             break
         fi
         query="${choices:2}"
+        echo -n "$READLINE_FULL_LINE" >/dev/tty
     done
     tr -d $'\x7f' <<<"$choices"
 }
 
 _fzf_bash_completion_fzf() {
-    printf '\e[%i;%iH' "${postprint[@]}" >/dev/tty
     FZF_DEFAULT_OPTS="--height ${FZF_TMUX_HEIGHT:-40%} --reverse $FZF_DEFAULT_OPTS $FZF_COMPLETION_OPTS" \
         fzf -1 -0 --bind=tab:execute'[echo q={q}]'+abort --query "$query" --prompt "> $2" -d '\x7f' --nth 2
 }

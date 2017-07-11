@@ -146,9 +146,16 @@ _fzf_bash_completion_default() {
         )"
     fi
 
-    COMPREPLY="$(<<<"$COMPREPLY" sort -u | fzf_bash_completion_selector "$@")"
+    COMPREPLY="$(<<<"$COMPREPLY" sort -u | fzf_bash_completion_selector "$1" "${2##[\"\']}" "$3" )"
     [ -z "$COMPREPLY" ] && return
-    [ "$compl_noquote" != 1 -a "$compl_filenames" = 1 ] && COMPREPLY="$(printf %q "$COMPREPLY")"
+    if [ "$compl_noquote" != 1 -a "$compl_filenames" = 1 ]; then
+        if [ "${COMPREPLY::1}" = '~' -a -z "$quotes" ]; then
+            # don't quote the tilde
+            printf -v COMPREPLY '~%q' "${COMPREPLY:1}"
+        else
+            printf -v COMPREPLY %q "${COMPREPLY:${#quotes}}"
+        fi
+    fi
     [ "$compl_nospace" != 1 ] && COMPREPLY="$COMPREPLY "
     [[ "$compl_filenames" == *1* ]] && COMPREPLY="${COMPREPLY/%\/ //}"
 }

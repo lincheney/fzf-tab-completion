@@ -138,7 +138,9 @@ _fzf_bash_completion_default() {
     if [[ "$compl_filenames" == *1* ]]; then
         COMPREPLY="$(
             while IFS= read line; do
-                [ -d "$line" ] && line="$line/"
+                local line_copy="$line"
+                __expand_tilde_by_ref line_copy
+                [ -d "$line_copy" ] && line="$line/"
                 echo "$line"
             done <<<"$COMPREPLY"
         )"

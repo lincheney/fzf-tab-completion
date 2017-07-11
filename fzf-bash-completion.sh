@@ -15,7 +15,7 @@ fzf_bash_completion() {
     local postprint=( $(_fzf_bash_completion_getpos) )
     printf '\e[u'
     local initial=( $(_fzf_bash_completion_getpos) )
-    printf '\e[%i;%iH' "$(( postprint[0]+1 ))" 0
+    # printf '\e[%i;%iH' "$(( postprint[0] ))" 0
 
     local find_cmd="$(dirname "$(readlink -e "${BASH_SOURCE[0]}")")/find-cmd/target/release/find-cmd"
     read start end rest < <("$find_cmd")
@@ -50,7 +50,9 @@ fzf_bash_completion() {
     fi
 
     # restore initial cursor position
-    printf '\e[%iA' "$((postprint[0]-initial[0]+1))"
+    if [ "$((postprint[0]-initial[0]))" != 0 ]; then
+        printf '\e[%iA' "$((postprint[0]-initial[0]))"
+    fi
     printf '\r'
 }
 
@@ -72,6 +74,7 @@ fzf_bash_completion_selector() {
 }
 
 _fzf_bash_completion_fzf() {
+    printf '\e[%i;%iH' "${postprint[@]}" >/dev/tty
     FZF_DEFAULT_OPTS="--height ${FZF_TMUX_HEIGHT:-40%} --reverse $FZF_DEFAULT_OPTS $FZF_COMPLETION_OPTS" \
         fzf -1 -0 --bind=tab:execute'[echo q={q}]'+abort --query "$query" --prompt "> $2" -d '\x7f' --nth 2
 }

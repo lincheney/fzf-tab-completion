@@ -92,14 +92,15 @@ _fzf_bash_completion_expand_alias() {
 }
 
 _fzf_bash_completion_get_results() {
-    if [[ "$2" =~ .*\$\{?([A-Za-z0-9_]*)$ ]]; then
-        local filter="${BASH_REMATCH[1]}"
+    if [[ "$2" =~ .*\$(\{?)([A-Za-z0-9_]*)$ ]]; then
+        local brace="${BASH_REMATCH[1]}"
+        local filter="${BASH_REMATCH[2]}"
         if [ -n "$filter" ]; then
             local prefix="${2:: -${#filter}}"
         else
             local prefix="$2"
         fi
-        COMPREPLY="$(compgen -v -P "$prefix" -- "$filter")"
+        COMPREPLY="$(compgen -v -P "$prefix" -S "${brace:+}}" -- "$filter")"
     elif [ "$COMP_CWORD" == 0 ]; then
         COMPREPLY="$(compgen -abc -- "$2")"
     else

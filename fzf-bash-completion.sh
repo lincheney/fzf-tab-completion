@@ -5,7 +5,7 @@ _fzf_bash_completion_sed_escape() {
 _fzf_bash_completion_getpos() {
     printf '\e[6n' > /dev/tty
     IFS=';' read -r -d R -a pos
-    echo "$(( ${pos[0]:2} )) $(( pos[1] ))"
+    echo "$(( ${pos[0]/#*[/} )) $(( pos[1] ))"
 }
 
 fzf_bash_completion() {

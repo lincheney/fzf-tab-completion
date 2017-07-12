@@ -82,7 +82,7 @@ _fzf_bash_completion_fzf() {
 _fzf_bash_completion_expand_alias() {
     if alias "$1" &>/dev/null; then
         value=( ${BASH_ALIASES[$1]} )
-        if [ "${value[0]}" != "$1" ]; then
+        if [ -n "${value[*]}" -a "${value[0]}" != "$1" ]; then
             COMP_WORDS=( "${value[@]}" "${COMP_WORDS[@]:1}" )
             COMP_CWORD="$(( COMP_CWORD + ${#value[@]} - 1 ))"
             COMP_LINE="$(<<<"$COMP_LINE" sed "s/^$(_fzf_bash_completion_sed_escape "$1")/$(_fzf_bash_completion_sed_escape "${BASH_ALIASES[$1]}")/")"

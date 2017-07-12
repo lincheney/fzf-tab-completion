@@ -11,8 +11,8 @@ pub struct Match {
 }
 
 impl Match {
-    pub fn offset(&self, x: usize) -> Match {
-        Match{ start: self.start+x, end: self.end+x, found: self.found }
+    pub fn offset(&self, offset: usize) -> Match {
+        Match{ start: self.start+offset, end: self.end+offset, found: self.found }
     }
 }
 
@@ -82,22 +82,21 @@ fn parse_line(line: &str, point: usize, end: Option<&Regex>) -> Match {
             continue;
         }
 
-        let block_end = if line[i..].starts_with('(') {
-            i += 1;
-            Some(&CLOSE_ROUND_BRACKET_RE as &Regex)
-        } else if line[i..].starts_with('{') {
-            i += 1;
-            Some(&CLOSE_CURLY_BRACKET_RE as &Regex)
-        } else {
-            None
-        };
-
-        if block_end.is_some() {
-            let m = parse_line(&line[i..], if point<i { 0 } else { point-i }, block_end);
-            if m.found { return m.offset(i); }
-            i += m.end;
-            continue;
+        let mut matched = false;
+        for &(open, close) in [('(', &CLOSE_ROUND_BRACKET_RE as &Regex), ('{', &CLOSE_CURLY_BRACKET_RE)].iter() {
+            if line[i..].starts_with(open) {
+                i += 1;
+                let m = parse_line(&line[i..], if point<i { 0 } else { point-i }, Some(close));
+                if m.found { return m.offset(i); }
+                if i == point {
+                    return Match{ start: i, end: i+m.end, found: true };
+                }
+                i += m.end;
+                matched = true;
+                break;
+            }
         }
+        if matched { continue; }
 
         if start == Some(i) {
             if let Some(m) = KEYWORD_RE.find(&line[i..]) {
@@ -209,6 +208,7 @@ mod test {
         assert_parse_line!("echo ${var", "", "echo ${var");
         assert_parse_line!("echo $(cat) ", "123", "echo $(cat) 123");
         assert_parse_line!("echo $(ca", "t) 123", "cat");
+        assert_parse_line!("echo $(", "cat) 123", "cat");
 
         assert_parse_line!("KEY=VALUE echo", " 123", "echo 123");
         assert_parse_line!("KE", "Y=VALUE echo 123", "KEY=VALUE");

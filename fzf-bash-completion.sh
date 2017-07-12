@@ -132,7 +132,7 @@ _fzf_bash_completion_default() {
     fi
 
     if [ "$compl_plusdirs" = 1 ]; then
-        COMPREPLY+=$'\n'"$(compgen -o dirnames -- "$2")"
+        COMPREPLY+="${COMPREPLY:+$'\n'}$(compgen -o dirnames -- "$2")"
     fi
 
     compl_filenames="${compl_filenames}${compl_plusdirs}${compl_dirnames}"
@@ -147,7 +147,7 @@ _fzf_bash_completion_default() {
         )"
     fi
 
-    COMPREPLY="$(<<<"$COMPREPLY" sort -u | fzf_bash_completion_selector "$1" "${2##[\"\']}" "$3" )"
+    COMPREPLY="$(<<<"$COMPREPLY" sort -u | fzf_bash_completion_selector "$1" "${2#[\"\']}" "$3" )"
     [ -z "$COMPREPLY" ] && return
     if [ "$compl_noquote" != 1 -a "$compl_filenames" = 1 ]; then
         if [ "${COMPREPLY::1}" = '~' -a -z "$quotes" ]; then
@@ -158,7 +158,7 @@ _fzf_bash_completion_default() {
         fi
     fi
     [ "$compl_nospace" != 1 ] && COMPREPLY="$COMPREPLY "
-    [[ "$compl_filenames" == *1* ]] && COMPREPLY="${COMPREPLY/%\/ //}"
+    [[ "$compl_filenames" == *1* ]] && COMPREPLY="${COMPREPLY%\/ }"
 }
 
 _fzf_bash_completion_complete() {
@@ -232,7 +232,9 @@ _fzf_bash_completion_complete() {
                 eval "printf '%s\\n' $compl_wordlist"
             fi
 
-            printf %s\\n "${COMPREPLY[@]}"
+            if [ -n "${COMPREPLY[*]}" ]; then
+                printf %s\\n "${COMPREPLY[@]}"
+            fi
 
             if [ -n "$compl_command" ]; then
                 COMP_LINE="$COMP_LINE" COMP_POINT="$COMP_POINT" COMP_KEY="$COMP_KEY" COMP_TYPE="$COMP_TYPE" \

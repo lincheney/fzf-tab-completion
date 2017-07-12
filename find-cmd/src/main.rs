@@ -22,6 +22,7 @@ lazy_static! {
     static ref WHITESPACE_RE: Regex = Regex::new(r"^([\s&&[^\n]]|\\\n)+").unwrap(); // newlines split statements
     static ref KEYWORD_RE: Regex = Regex::new(r"^(\[\[|case|do|done|elif|else|esac|fi|for|function|if|in|select|then|time|until|while)\s").unwrap();
     static ref NEW_STATEMENT_RE: Regex = Regex::new(r"^(;|\n|&&|\|\|)").unwrap();
+    static ref ENV_VAR_RE: Regex = Regex::new(r"^\w+=").unwrap();
     static ref TOKEN_RE: Regex = Regex::new(concat!(
             r"^(",
             r"('[^']*('|$))|", // ' string
@@ -29,6 +30,8 @@ lazy_static! {
             "(\\\\.|[^\\s'\"(){}])+", // other
             r")",
     )).unwrap();
+    static ref CLOSE_ROUND_BRACKET_RE: Regex = Regex::new(r"^\)").unwrap();
+    static ref CLOSE_CURLY_BRACKET_RE: Regex = Regex::new(r"^\}").unwrap();
 }
 
 fn parse_dq_string(line: &str, point: usize) -> Match {
@@ -37,7 +40,7 @@ fn parse_dq_string(line: &str, point: usize) -> Match {
         match DQ_STRING_RE.find(&line[i..]).unwrap().as_str() {
             "$(" => {
                 i += 2;
-                let m = parse_line(&line[i..], if point<i { 0 } else { point-i }, Some(")"));
+                let m = parse_line(&line[i..], if point<i { 0 } else { point-i }, Some(&CLOSE_ROUND_BRACKET_RE));
                 if m.found { return m.offset(i); }
                 i += m.end;
             },
@@ -48,11 +51,17 @@ fn parse_dq_string(line: &str, point: usize) -> Match {
     return Match{start: 0, end: i, found: false};
 }
 
-fn parse_line(line: &str, point: usize, end: Option<&str>) -> Match {
+fn parse_line(line: &str, point: usize, end: Option<&Regex>) -> Match {
     let mut i = 0;
     let mut start: Option<usize> = None;
 
     while i < line.len() {
+        if let Some(end) = end {
+            if end.is_match(&line[i..]) {
+                break;
+            }
+        }
+
         if let Some(m) = WHITESPACE_RE.find(&line[i..]) {
             i += m.end();
             continue;
@@ -75,10 +84,10 @@ fn parse_line(line: &str, point: usize, end: Option<&str>) -> Match {
 
         let block_end = if line[i..].starts_with('(') {
             i += 1;
-            Some(")")
+            Some(&CLOSE_ROUND_BRACKET_RE as &Regex)
         } else if line[i..].starts_with('{') {
             i += 1;
-            Some("}")
+            Some(&CLOSE_CURLY_BRACKET_RE as &Regex)
         } else {
             None
         };
@@ -90,12 +99,6 @@ fn parse_line(line: &str, point: usize, end: Option<&str>) -> Match {
             continue;
         }
 
-        if let Some(end) = end {
-            if line[i..].starts_with(end) {
-                break;
-            }
-        }
-
         if start == Some(i) {
             if let Some(m) = KEYWORD_RE.find(&line[i..]) {
                 i += m.end();
@@ -103,6 +106,17 @@ fn parse_line(line: &str, point: usize, end: Option<&str>) -> Match {
                     i -= 1;
                     break;
                 }
+                start = None;
+                continue;
+            }
+            if let Some(m) = ENV_VAR_RE.find(&line[i..]) {
+                i += m.end();
+                let m = parse_line(&line[i..], if point<i { 0 } else { point-i }, Some(&WHITESPACE_RE));
+                if i >= point || (m.found && m.start == 0) {
+                    return Match{ start: start.unwrap(), end: m.end+i, found: true };
+                }
+                if m.found { return m.offset(i); }
+                i += m.end;
                 start = None;
                 continue;
             }
@@ -195,5 +209,13 @@ mod test {
         assert_parse_line!("echo ${var", "", "echo ${var");
         assert_parse_line!("echo $(cat) ", "123", "echo $(cat) 123");
         assert_parse_line!("echo $(ca", "t) 123", "cat");
+
+        assert_parse_line!("KEY=VALUE echo", " 123", "echo 123");
+        assert_parse_line!("KE", "Y=VALUE echo 123", "KEY=VALUE");
+        assert_parse_line!("KEY=VAL", "UE echo 123", "KEY=VALUE");
+        assert_parse_line!("KEY=VA$(ca", "t) echo 123", "cat");
+        assert_parse_line!("KEY=VALUE XYZ=", "STUFF echo 123", "XYZ=STUFF");
+        assert_parse_line!("KEY=VALUE XYZ=$(ca", "t) echo 123", "cat");
+        assert_parse_line!("KEY=VALUE XYZ=$(ca", "t echo 123", "cat echo 123");
     }
 }

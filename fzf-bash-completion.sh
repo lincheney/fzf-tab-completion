@@ -158,7 +158,7 @@ _fzf_bash_completion_default() {
         fi
     fi
     [ "$compl_nospace" != 1 ] && COMPREPLY="$COMPREPLY "
-    [[ "$compl_filenames" == *1* ]] && COMPREPLY="${COMPREPLY%\/ }"
+    [[ "$compl_filenames" == *1* ]] && COMPREPLY="${COMPREPLY/%\/ //}"
 }
 
 _fzf_bash_completion_complete() {

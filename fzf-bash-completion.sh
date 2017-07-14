@@ -100,7 +100,7 @@ _fzf_bash_completion_get_results() {
         else
             local prefix="$2"
         fi
-        COMPREPLY="$(compgen -v -P "$prefix" -S "${brace:+}}" -- "$filter")"
+        COMPREPLY="$(compgen -v -P "$prefix" -S "${brace:+\}}" -- "$filter")"
     elif [ "$COMP_CWORD" == 0 ]; then
         COMPREPLY="$(compgen -abc -- "$2")"
     else

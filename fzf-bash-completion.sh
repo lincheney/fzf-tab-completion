@@ -68,17 +68,14 @@ fzf_bash_completion_selector() {
 }
 
 _fzf_bash_completion_fzf() {
-    local tmp="$(mktemp --tmpdir completion.XXXX)"
     # print to tmpfile if there is only one option left
-    local command='[ "$(<<<"$input" fzf -f {q} | wc -l)" = 1 ] && (echo {} >>"$tmp"; kill $PPID)'
+    exec {tmp}>&1
+    local command='[ "$(<<<"$input" fzf -f {q} | wc -l)" = 1 ] && (echo {} >&"$tmp"; kill $PPID)'
 
     <<<"$input" \
     input="$input" tmp="$tmp" \
     FZF_DEFAULT_OPTS="--height ${FZF_TMUX_HEIGHT:-40%} --reverse $FZF_DEFAULT_OPTS $FZF_COMPLETION_OPTS -d '\x7f' --nth 2" \
-        fzf -1 -0 --bind=tab:execute-silent"@$command@" --prompt "> $2" >>"$tmp"
-
-    cat "$tmp"
-    rm "$tmp"
+        fzf -1 -0 --bind=tab:execute-silent"@$command@" --prompt "> $2" >&"$tmp"
 }
 
 _fzf_bash_completion_expand_alias() {

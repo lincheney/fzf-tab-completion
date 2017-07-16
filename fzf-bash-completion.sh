@@ -1,3 +1,5 @@
+_fzf_bash_completion_dir="$(dirname "$(readlink -e "${BASH_SOURCE[0]}")")"
+
 _fzf_bash_completion_sed_escape() {
     sed 's/[.[\*^$\/]/\\&/g' <<<"$1"
 }
@@ -17,7 +19,7 @@ fzf_bash_completion() {
     local initial=( $(_fzf_bash_completion_getpos) )
     printf '\e[%i;%iH' "${postprint[@]}" >/dev/tty
 
-    local find_cmd="$(dirname "$(readlink -e "${BASH_SOURCE[0]}")")/find-cmd/target/release/find-cmd"
+    local find_cmd="${_fzf_bash_completion_dir}/find-cmd/target/release/find-cmd"
     read start end rest < <("$find_cmd")
     local point="$(( READLINE_POINT - start ))"
     local line="${READLINE_LINE:$start:$end-$start}"

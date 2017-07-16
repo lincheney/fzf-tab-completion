@@ -139,14 +139,8 @@ _fzf_bash_completion_default() {
 
     compl_filenames="${compl_filenames}${compl_plusdirs}${compl_dirnames}"
     if [[ "$compl_filenames" == *1* ]]; then
-        COMPREPLY="$(
-            while IFS= read line; do
-                local line_copy="$line"
-                __expand_tilde_by_ref line_copy
-                [ -d "$line_copy" ] && line="$line/"
-                echo "$line"
-            done <<<"$COMPREPLY"
-        )"
+        local dir_marker="${_fzf_bash_completion_dir}/dir-marker/target/release/dir-marker"
+        COMPREPLY="$("$dir_marker" <<<"$COMPREPLY")"
     fi
 
     COMPREPLY="$(<<<"$COMPREPLY" sort -u | fzf_bash_completion_selector "$1" "${2#[\"\']}" "$3" )"

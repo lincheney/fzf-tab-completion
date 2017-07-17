@@ -1,28 +1,18 @@
 extern crate shellexpand;
 extern crate users;
-use std::env;
 use std::path::Path;
 use std::process::exit;
 use std::io::{stdin, stdout, BufRead, Write, Error};
 use users::os::unix::UserExt;
 
 fn check_for_dir(string: &str) -> bool {
-    // expand env vars
-    let expanded = match shellexpand::env(string) {
-        Ok(expanded) => expanded,
-        Err(_) => { return false },
-    };
-
     // expand tilde
-    if string.starts_with('~') {
-        let part = expanded.find('/').map_or(&expanded[..], |i| &expanded[..i]);
-        let path = match &part[1..] {
-            "+" => {
-                if let Ok(var) = env::var("PWD") { var } else { return false }
-            },
-            "-" => {
-                if let Ok(var) = env::var("OLDPWD") { var } else { return false }
-            },
+    let mut path;
+    let string = if string.starts_with('~') {
+        let part = string.find('/').map_or(string, |i| &string[..i]);
+        path = match &part[1..] {
+            "+" => "${PWD}".to_owned(),
+            "-" => "${OLDPWD}".to_owned(),
             "" => {
                 users::get_user_by_uid(users::get_current_uid()).unwrap().home_dir().to_str().unwrap().to_owned()
             },
@@ -33,11 +23,20 @@ fn check_for_dir(string: &str) -> bool {
                     return false
                 }
             },
-        } + &expanded[part.len()..];
-        return Path::new(&path).is_dir()
-    }
+        };
+        path.push_str(&string[part.len()..]);
+        &path
+    } else {
+        string
+    };
 
-    Path::new(&*expanded).is_dir()
+    // expand env vars
+    let string = match shellexpand::env(string) {
+        Ok(string) => string,
+        Err(_) => { return false },
+    };
+
+    Path::new(&*string).is_dir()
 }
 
 fn main_loop() -> Result<(), Error> {
@@ -94,6 +93,12 @@ mod test {
     }
 
     #[test]
+    fn test_tilde_and_var() {
+        // tilde gets expanded first
+        assert_eq!(check_for_dir("~$USER"), false);
+    }
+
+    #[test]
     fn test_tilde_not_user() {
         assert_eq!(check_for_dir("~askjdh"), false);
     }
@@ -120,6 +125,7 @@ mod test {
 
     #[test]
     fn test_oldpwd() {
+        env::set_var("OLDPWD", "/");
         assert_eq!(check_for_dir("~-"), true);
     }
 }

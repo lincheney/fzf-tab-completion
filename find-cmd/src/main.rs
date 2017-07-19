@@ -21,7 +21,7 @@ lazy_static! {
     static ref CURLY_VAR_RE: Regex = Regex::new(r"^\$\{[^}]*($|})").unwrap();
     static ref WHITESPACE_RE: Regex = Regex::new(r"^([\s&&[^\n]]|\\\n)+").unwrap(); // newlines split statements
     static ref KEYWORD_RE: Regex = Regex::new(r"^(\[\[|case|do|done|elif|else|esac|fi|for|function|if|in|select|then|time|until|while)\s").unwrap();
-    static ref NEW_STATEMENT_RE: Regex = Regex::new(r"^(;|\n|&&|\|\|)").unwrap();
+    static ref NEW_STATEMENT_RE: Regex = Regex::new(r"^(;|\n|&&|\|[|&]?)").unwrap();
     static ref ENV_VAR_RE: Regex = Regex::new(r"^\w+=").unwrap();
     static ref TOKEN_RE: Regex = Regex::new(concat!(
             r"^(",
@@ -203,6 +203,10 @@ mod test {
         assert_parse_line!("echo 123 && echo", " 456", "echo 456");
         assert_parse_line!("echo", " 123 || echo 456", "echo 123 ");
         assert_parse_line!("echo 123 || echo", " 456", "echo 456");
+        assert_parse_line!("echo", " 123 | echo 456", "echo 123 ");
+        assert_parse_line!("echo 123 | echo", " 456", "echo 456");
+        assert_parse_line!("echo", " 123 |& echo 456", "echo 123 ");
+        assert_parse_line!("echo 123 |& echo", " 456", "echo 456");
 
         assert_parse_line!("echo ${var", "}", "echo ${var}");
         assert_parse_line!("echo ${var", "", "echo ${var");

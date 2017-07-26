@@ -15,7 +15,7 @@ fzf_completion_widget() {
         exec {__evaled}>&1
         value="$(
             (
-                local __comp_index=1 __comparguments_replay=
+                local __comp_index=0 __comparguments_replay=
                 _main_complete || true
             ) | grep . | awk -F"$_FZF_COMPLETION_SEP" '!x[$2]++' |
             FZF_DEFAULT_OPTS="--height ${FZF_TMUX_HEIGHT:-40%} --reverse $FZF_DEFAULT_OPTS $FZF_COMPLETION_OPTS" \

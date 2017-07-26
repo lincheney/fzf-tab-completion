@@ -37,7 +37,7 @@ stuff() {
         fi
 
         eval "$comparguments_replay"
-        printf 'comparguments+=( %q )\n' "$comparguments_replay" >&"${compopts}"
+        printf 'comparguments+=( %q )\n' "${comparguments_replay+builtin comparguments -i '' -s :; $comparguments_replay}" >&"${compopts}"
 
         builtin compadd "${flags[@]}" "${(kv)opts[@]}" -A hits -D disp "$@"
         local code="$?"
@@ -79,8 +79,8 @@ stuff() {
         printf 'code=%q\n' "$code"
     )"
     unset -f compadd comparguments
-    zle -I
-    tput cuu1
+    # tput cuu1
+    # zle -I
 
     if [ "$code" = 0 ]; then
         local opts= index
@@ -97,7 +97,13 @@ stuff() {
     fi
 }
 
+jeff() {
+    zle stuff
+    zle redisplay
+}
+
 autoload compinit
 compinit
+zle -N jeff
 zle -C stuff complete-word stuff
-bindkey '\t' stuff
+bindkey '\t' jeff

@@ -3,9 +3,11 @@
 _FZF_COMPLETION_SEP=$'\x7f'
 _FZF_COMPLETION_FLAGS=( a k f q Q e n U l o 1 2 C )
 
-fzf_completion_widget() {
+fzf_completion() {
     local value code
     local __compadd_args=() __comparguments_args=()
+
+    tput cud1 # fzf clears the line on exit so move down one
     eval "$(
         set -o pipefail
         # hacks
@@ -39,6 +41,8 @@ fzf_completion_widget() {
         # insert everything added by fzf
         compstate[insert]=all
     fi
+    tput cuu "$(( BUFFERLINES+1 ))" # move back up
+    zle -I
 }
 
 # comparguments hack
@@ -97,10 +101,4 @@ _fzf_completion_compadd() {
     return "$code"
 }
 
-fzf_completion() {
-    zle fzf_completion_widget
-    zle redisplay
-}
-
-zle -C fzf_completion_widget complete-word fzf_completion_widget
-zle -N fzf_completion
+zle -C fzf_completion complete-word fzf_completion

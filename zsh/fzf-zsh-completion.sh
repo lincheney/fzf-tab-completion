@@ -18,7 +18,7 @@ fzf_completion() {
             (
                 local __comp_index=0 __comparguments_replay=
                 _main_complete || true
-            ) | grep . | awk -F"$_FZF_COMPLETION_SEP" '!x[$2]++' | _fzf_completion_selector
+            ) | awk -F"$_FZF_COMPLETION_SEP" '$2 && !x[$2]++' | _fzf_completion_selector
         )"
         code="$?"
         exec {__evaled}>&-

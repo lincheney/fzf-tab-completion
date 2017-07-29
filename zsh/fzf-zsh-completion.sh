@@ -7,7 +7,6 @@ fzf_completion() {
     local value code
     local __compadd_args=() __comparguments_args=()
 
-    tput cud1 # fzf clears the line on exit so move down one
     eval "$(
         set -o pipefail
         # hacks
@@ -19,9 +18,7 @@ fzf_completion() {
             (
                 local __comp_index=0 __comparguments_replay=
                 _main_complete || true
-            ) | grep . | awk -F"$_FZF_COMPLETION_SEP" '!x[$2]++' |
-            FZF_DEFAULT_OPTS="--height ${FZF_TMUX_HEIGHT:-40%} --reverse $FZF_DEFAULT_OPTS $FZF_COMPLETION_OPTS" \
-            fzf -1 -0 --prompt "> $PREFIX" -d "$_FZF_COMPLETION_SEP" --with-nth 3.. --nth 1 -m
+            ) | grep . | awk -F"$_FZF_COMPLETION_SEP" '!x[$2]++' | _fzf_completion_selector
         )"
         code="$?"
         exec {__evaled}>&-
@@ -41,8 +38,23 @@ fzf_completion() {
         # insert everything added by fzf
         compstate[insert]=all
     fi
-    tput cuu "$(( BUFFERLINES+1 ))" # move back up
+    tput cuu "$(( BUFFERLINES ))" # move back up
     zle -I
+}
+
+_fzf_completion_selector() {
+    read -r first || return 1 # no input
+    if ! read -r second; then
+        echo "$first" && return # only one input
+    fi
+
+    tput cud1 >/dev/tty # fzf clears the line on exit so move down one
+    cat <(printf %s\\n "$first" "$second") - | \
+        FZF_DEFAULT_OPTS="--height ${FZF_TMUX_HEIGHT:-40%} --reverse $FZF_DEFAULT_OPTS $FZF_COMPLETION_OPTS" \
+            fzf --prompt "> $PREFIX" -d "$_FZF_COMPLETION_SEP" --with-nth 3.. --nth 1 -m
+    code="$?"
+    tput cuu1 >/dev/tty
+    return "$code"
 }
 
 # comparguments hack

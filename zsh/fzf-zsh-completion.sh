@@ -51,7 +51,7 @@ _fzf_completion_selector() {
     tput cud1 >/dev/tty # fzf clears the line on exit so move down one
     cat <(printf %s\\n "$first" "$second") - | \
         FZF_DEFAULT_OPTS="--height ${FZF_TMUX_HEIGHT:-40%} --reverse $FZF_DEFAULT_OPTS $FZF_COMPLETION_OPTS" \
-            fzf --prompt "> $PREFIX" -d "$_FZF_COMPLETION_SEP" --with-nth 3.. --nth 1 -m
+            fzf --prompt "> $PREFIX" -d "$_FZF_COMPLETION_SEP" --with-nth 3.. --nth 2 -m
     code="$?"
     tput cuu1 >/dev/tty
     return "$code"
@@ -107,8 +107,16 @@ _fzf_completion_compadd() {
         elif [[ "${__disp[$i]}" == "${__hits[$i]}"* ]]; then
             __disp[$i]="${__hits[$i]}${_FZF_COMPLETION_SEP}${__disp[$i]:${#__hits[$i]}}"
         fi
-        # index, value, description
-        echo "${__comp_index}${_FZF_COMPLETION_SEP}${__hits[$i]}${_FZF_COMPLETION_SEP}${__disp[$i]:-${__hits[$i]}}"
+
+        __disp[$i]="${__disp[$i]:-${__hits[$i]}}"
+        if [[ "${__disp[$i]}" == "$PREFIX"* ]]; then
+            __disp[$i]="${PREFIX}${_FZF_COMPLETION_SEP}${__disp[$i]:${#PREFIX}}"
+        else
+            __disp[$i]="${_FZF_COMPLETION_SEP}${__disp[$i]}"
+        fi
+
+        # index, value, prefix, display
+        echo "${__comp_index}${_FZF_COMPLETION_SEP}${__hits[$i]}${_FZF_COMPLETION_SEP}${__disp[$i]}"
     done
     return "$code"
 }

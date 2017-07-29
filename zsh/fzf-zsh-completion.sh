@@ -102,3 +102,4 @@ _fzf_completion_compadd() {
 }
 
 zle -C fzf_completion complete-word fzf_completion
+fzf_default_completion=fzf_completion

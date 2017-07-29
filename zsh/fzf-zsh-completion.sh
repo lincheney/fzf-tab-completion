@@ -72,35 +72,34 @@ _fzf_completion_comparguments() {
 
 _fzf_completion_compadd() {
     local __flags=()
-    zparseopts -D -E -A __opts -- "${^_FZF_COMPLETION_FLAGS[@]}+=__flags" F: P: S: p: s: i: I: W: d: J: V: X: x: r: R: D: O: A: E: M:
-    local __filenames="${__opts[(i)-f]}"
-    unset "__opts[-${^_FZF_COMPLETION_FLAGS[@]}]"
+    local __OAD=()
+    local __disp __hits
+    zparseopts -D -E -a __opts -A __optskv -- "${^_FZF_COMPLETION_FLAGS[@]}+=__flags" F+: P+: S+: p+: s+: i+: I+: W+: d+:=__disp J+: V+: X+: x+: r+: R+: D+: O+: A+: E+: M+:
+    local __filenames="${__flags[(r)-f]}"
 
-    if [ -n "${__opts[(i)-A]}${__opts[(i)-O]}${__opts[(i)-D]}" ]; then
+    if [ -n "${__optskv[(i)-A]}${__optskv[(i)-O]}${__optskv[(i)-D]}" ]; then
         # handle -O -A -D
-        builtin compadd "${__flags[@]}" "${(kv)__opts[@]}" "$@"
+        builtin compadd "${__OAD[@]}" "${__flags[@]}" "${__opts[@]}" "$@"
         return "$?"
     fi
 
-    local __disp __hits
-    if [ "${__opts[-d]:0:1}" = '(' ]; then
-        eval "__disp=${__opts[-d]}"
+    if [ "${__disp[2]:0:1}" = '(' ]; then
+        eval "__disp=${__disp[2]}"
     else
-        __disp=( "${(@P)__opts[-d]}" )
+        __disp=( "${(@P)__disp[2]}" )
     fi
 
     eval "$__comparguments_replay"
     printf '__comparguments_args+=( %q )\n' "${__comparguments_replay+builtin comparguments -i '' -s :; $__comparguments_replay}" >&"${__evaled}"
 
-    builtin compadd "${__flags[@]}" "${(kv)__opts[@]}" -A __hits -D __disp "$@"
+    builtin compadd -A __hits -D __disp "${__flags[@]}" "${__opts[@]}" "$@"
     local code="$?"
     __flags="${(j..)__flags//[ak-]}"
-    unset '__opts[-d]'
-    printf '__compadd_args+=( %q )\n' "$(printf '%q ' ${__flags:+-$__flags} "${(kv)__opts[@]}")" >&"${__evaled}"
+    printf '__compadd_args+=( %q )\n' "$(printf '%q ' ${__flags:+-$__flags} "${__opts[@]}")" >&"${__evaled}"
     (( __comp_index++ ))
 
-    local prefix="${__opts[-W]:-.}"
-    local __disp=( "${__hits[@]}" ) # display strings not handled for now
+    local prefix="${__optskv[-W]:-.}"
+    __disp=( "${__hits[@]}" ) # display strings not handled for now
     for ((i = 1; i <= $#__hits; i++)); do
         if [ -n "$__filenames" -a "${__disp[$i]:-${__hits[$i]}}" = "${__hits[$i]}" -a -d "${prefix}/${__hits[$i]}" ]; then
             __disp[$i]="${__hits[$i]}/"

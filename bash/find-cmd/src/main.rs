@@ -27,11 +27,12 @@ lazy_static! {
             r"^(",
             r"('[^']*('|$))|", // ' string
             r"(\$'(\\.|[^'])*('|$))|", // $' string
-            "(\\\\.|[^\\s'\"(){}])+", // other
+            "(\\\\.|[^\\s'\"(){}`])+", // other
             r")",
     )).unwrap();
     static ref CLOSE_ROUND_BRACKET_RE: Regex = Regex::new(r"^\)").unwrap();
     static ref CLOSE_CURLY_BRACKET_RE: Regex = Regex::new(r"^\}").unwrap();
+    static ref BACKTICK_RE: Regex = Regex::new(r"^`").unwrap();
 }
 
 fn parse_dq_string(line: &str, point: usize) -> Match {
@@ -83,7 +84,11 @@ fn parse_line(line: &str, point: usize, end: Option<&Regex>) -> Match {
         }
 
         let mut matched = false;
-        for &(open, close) in [('(', &CLOSE_ROUND_BRACKET_RE as &Regex), ('{', &CLOSE_CURLY_BRACKET_RE)].iter() {
+        for &(open, close) in [
+                ('(', &CLOSE_ROUND_BRACKET_RE as &Regex),
+                ('{', &CLOSE_CURLY_BRACKET_RE),
+                ('`', &BACKTICK_RE),
+        ].iter() {
             if line[i..].starts_with(open) {
                 i += 1;
                 let m = parse_line(&line[i..], if point<i { 0 } else { point-i }, Some(close));
@@ -175,6 +180,7 @@ mod test {
         assert_parse_line!("echo", " '12(3", "echo '12(3");
         assert_parse_line!("echo", " $'12\\'3'", "echo $'12\\'3'");
         assert_parse_line!("echo", " '1\\'2\\\\(3'", "echo '1\\'2\\\\(3'");
+        assert_parse_line!("`cat`; echo", "", "echo");
 
         assert_parse_line!("[[ echo", " 123", "echo 123");
         assert_parse_line!("case echo", " 123", "echo 123");

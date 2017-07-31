@@ -5,18 +5,17 @@ _FZF_COMPLETION_FLAGS=( a k f q Q e n U l o 1 2 C )
 
 fzf_completion() {
     local value code
-    local __compadd_args=() __comparguments_args=()
+    local __compadd_args=()
 
     eval "$(
         set -o pipefail
         # hacks
-        comparguments() { _fzf_completion_comparguments "$@"; }
         compadd() { _fzf_completion_compadd "$@"; }
 
         exec {__evaled}>&1
         value="$(
             (
-                local __comp_index=0 __comparguments_replay=
+                local __comp_index=0
                 _main_complete || true
             ) | awk -F"$_FZF_COMPLETION_SEP" '$2 && !x[$2]++' | _fzf_completion_selector
         )"
@@ -32,8 +31,7 @@ fzf_completion() {
         while IFS="$_FZF_COMPLETION_SEP" read -r -A value; do
             index="${value[1]}"
             opts="${__compadd_args[$index]}"
-            eval "${__comparguments_args[$index]}"
-            eval "compadd $opts -- ${(q)value[2]}"
+            eval "$opts -- ${(q)value[2]}"
         done <<<"$value"
         # insert everything added by fzf
         compstate[insert]=all
@@ -57,19 +55,6 @@ _fzf_completion_selector() {
     return "$code"
 }
 
-# comparguments hack
-# seems to be function local so its hard to hijack
-# so we record all calls to comparguments and replay them every time
-_fzf_completion_comparguments() {
-    if [ "$1" = -i ]; then
-        # reset
-        __comparguments_replay=
-    fi
-    __comparguments_replay+="; builtin comparguments $(printf '%q ' "$@")"
-    eval "$__comparguments_replay"
-    return "$?"
-}
-
 _fzf_completion_compadd() {
     local __flags=()
     local __OAD=()
@@ -89,13 +74,10 @@ _fzf_completion_compadd() {
         __disp=( "${(@P)__disp[2]}" )
     fi
 
-    eval "$__comparguments_replay"
-    printf '__comparguments_args+=( %q )\n' "${__comparguments_replay+builtin comparguments -i '' -s :; $__comparguments_replay}" >&"${__evaled}"
-
     builtin compadd -A __hits -D __disp "${__flags[@]}" "${__opts[@]}" "$@"
     local code="$?"
     __flags="${(j..)__flags//[ak-]}"
-    printf '__compadd_args+=( %q )\n' "$(printf '%q ' ${__flags:+-$__flags} "${__opts[@]}")" >&"${__evaled}"
+    printf '__compadd_args+=( %q )\n' "$(printf '%q ' PREFIX="$PREFIX" IPREFIX="$IPREFIX" SUFFIX="$SUFFIX" ISUFFIX="$ISUFFIX" compadd ${__flags:+-$__flags} "${__opts[@]}")" >&"${__evaled}"
     (( __comp_index++ ))
 
     local prefix="${__optskv[-W]:-.}"

@@ -81,23 +81,24 @@ _fzf_completion_compadd() {
     (( __comp_index++ ))
 
     local prefix="${__optskv[-W]:-.}"
+    local __disp_str __hit_str
     __disp=( "${__hits[@]}" ) # display strings not handled for now
     for ((i = 1; i <= $#__hits; i++)); do
-        if [ -n "$__filenames" -a "${__disp[$i]:-${__hits[$i]}}" = "${__hits[$i]}" -a -d "${prefix}/${__hits[$i]}" ]; then
-            __disp[$i]="${__hits[$i]}/"
-        elif [[ "${__disp[$i]}" == "${__hits[$i]}"* ]]; then
-            __disp[$i]="${__hits[$i]}${_FZF_COMPLETION_SEP}${__disp[$i]:${#__hits[$i]}}"
+        __hit_str="${__hits[$i]}"
+        __disp_str="${__disp[$i]:-$__hit_str}"
+
+        if [ -n "$__filenames" -a "$__disp_str" = "$__hit_str" -a -d "${prefix}/$__hit_str" ]; then
+            __disp_str+=/
         fi
 
-        __disp[$i]="${__disp[$i]:-${__hits[$i]}}"
-        if [[ "${__disp[$i]}" == "$PREFIX"* ]]; then
-            __disp[$i]="${PREFIX}${_FZF_COMPLETION_SEP}${__disp[$i]:${#PREFIX}}"
+        if [[ "$__disp_str" == "$PREFIX"* ]]; then
+            __disp_str="${PREFIX}${_FZF_COMPLETION_SEP}${__disp_str:${#PREFIX}}"
         else
-            __disp[$i]="${_FZF_COMPLETION_SEP}${__disp[$i]}"
+            __disp_str="${_FZF_COMPLETION_SEP}$__disp_str"
         fi
 
         # index, value, prefix, display
-        echo "${__comp_index}${_FZF_COMPLETION_SEP}${__hits[$i]}${_FZF_COMPLETION_SEP}${__disp[$i]}"
+        echo "${__comp_index}${_FZF_COMPLETION_SEP}${__hit_str}${_FZF_COMPLETION_SEP}$__disp_str"
     done
     return "$code"
 }

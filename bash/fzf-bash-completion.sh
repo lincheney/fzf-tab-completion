@@ -91,10 +91,10 @@ _fzf_bash_completion_get_results() {
         else
             local prefix="$2"
         fi
-        COMPREPLY="$(compgen -v -P "$prefix" -S "${brace:+\}}" -- "$filter")"
+        compgen -v -P "$prefix" -S "${brace:+\}}" -- "$filter"
     elif [ "$COMP_CWORD" == 0 ]; then
         compopt -o filenames
-        COMPREPLY="$(compgen -abc -- "$2")"
+        compgen -abc -- "$2"
     else
         _fzf_bash_completion_complete "$@"
     fi

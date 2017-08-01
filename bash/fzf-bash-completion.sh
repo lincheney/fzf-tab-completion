@@ -1,4 +1,5 @@
 _fzf_bash_completion_dir="$(dirname "$(readlink -e "${BASH_SOURCE[0]}")")"
+_FZF_COMPLETION_SEP=$'\x7f'
 
 _fzf_bash_completion_sed_escape() {
     sed 's/[.[\*^$\/]/\\&/g' <<<"$1"
@@ -62,20 +63,11 @@ fzf_bash_completer() {
     _fzf_bash_completion_default "$@"
 }
 
-fzf_bash_completion_selector() {
-    local input="$(sed -r "s/^.{${#2}}/&\x7f/")"
-    _fzf_bash_completion_fzf "$@" | tr -d $'\x7f'
-}
-
-_fzf_bash_completion_fzf() {
-    # print to tmpfile if there is only one option left
-    exec {tmp}>&1
-    local command='[ "$(<<<"$input" fzf -f {q} | wc -l)" = 1 ] && (echo {} >&"$tmp"; kill $PPID)'
-
-    <<<"$input" \
-    input="$input" tmp="$tmp" \
-    FZF_DEFAULT_OPTS="--height ${FZF_TMUX_HEIGHT:-40%} --reverse $FZF_DEFAULT_OPTS $FZF_COMPLETION_OPTS -d '\x7f' --nth 2" \
-        fzf -1 -0 --bind=tab:execute-silent"@$command@" --prompt "> $2" >&"$tmp"
+_fzf_bash_completion_selector() {
+    sed -r "s/^.{${#2}}/&$_FZF_COMPLETION_SEP/" \
+    | FZF_DEFAULT_OPTS="--height ${FZF_TMUX_HEIGHT:-40%} --reverse $FZF_DEFAULT_OPTS $FZF_COMPLETION_OPTS" \
+        fzf -1 -0 --prompt "> $2" --nth 2 -d "$_FZF_COMPLETION_SEP" \
+    | tr -d "$_FZF_COMPLETION_SEP"
 }
 
 _fzf_bash_completion_expand_alias() {
@@ -109,50 +101,42 @@ _fzf_bash_completion_get_results() {
 }
 
 _fzf_bash_completion_default() {
-    local results
-    local compl_bashdefault compl_default compl_dirnames compl_filenames compl_noquote compl_nosort compl_nospace compl_plusdirs
+    local value code
 
-    # hack: hijack compopt
-    compopt() { _fzf_bash_completion_compopt "$@"; }
-    _fzf_bash_completion_get_results "$@"
-    while [ "$?" = 124 ]; do
-        _fzf_bash_completion_get_results "$@"
-    done
-    # remove compopt hack
-    unset compopt
+    eval "$(
+        set -o pipefail
 
-    if [ -z "$COMPREPLY" ]; then
-        local compgen_opts=()
-        [ "$compl_bashdefault" = 1 ] && compgen_opts+=( -o bashdefault )
-        [ "$compl_default" = 1 ] && compgen_opts+=( -o default )
-        [ "$compl_dirnames" = 1 ] && compgen_opts+=( -o dirnames )
-        if [ -n "${compgen_opts[*]}" ]; then
-            COMPREPLY="$(compgen "${compgen_opts[@]}" -- "$2")"
+        # hack: hijack compopt
+        compopt() { _fzf_bash_completion_compopt "$@"; }
+
+        exec {__evaled}>&1
+        value="$(
+            (
+                _fzf_bash_completion_get_results "$@"
+                while [ "$?" = 124 ]; do
+                    _fzf_bash_completion_get_results "$@"
+                done
+            ) | awk '!x[$0]++' | _fzf_bash_completion_selector "$1" "${2#[\"\']}" "$3"
+        )"
+        code="$?"
+        exec {__evaled}>&-
+
+        printf 'COMPREPLY=%q\n' "$value"
+        printf 'code=%q\n' "$code"
+    )"
+
+    if [ "$code" = 0 ]; then
+        if [ "$compl_noquote" != 1 -a "$compl_filenames" = 1 ]; then
+            if [ "${COMPREPLY::1}" = '~' -a -z "$quotes" ]; then
+                # don't quote the tilde
+                printf -v COMPREPLY '~%q' "${COMPREPLY:1}"
+            else
+                printf -v COMPREPLY %q "${COMPREPLY:${#quotes}}"
+            fi
         fi
+        [ "$compl_nospace" != 1 ] && COMPREPLY="$COMPREPLY "
+        [[ "$compl_filenames" == *1* ]] && COMPREPLY="${COMPREPLY/%\/ //}"
     fi
-
-    if [ "$compl_plusdirs" = 1 ]; then
-        COMPREPLY+="${COMPREPLY:+$'\n'}$(compgen -o dirnames -- "$2")"
-    fi
-
-    compl_filenames="${compl_filenames}${compl_plusdirs}${compl_dirnames}"
-    if [[ "$compl_filenames" == *1* ]]; then
-        local dir_marker="${_fzf_bash_completion_dir}/dir-marker/target/release/dir-marker"
-        COMPREPLY="$("$dir_marker" <<<"$COMPREPLY")"
-    fi
-
-    COMPREPLY="$(<<<"$COMPREPLY" sort -u | fzf_bash_completion_selector "$1" "${2#[\"\']}" "$3" )"
-    [ -z "$COMPREPLY" ] && return
-    if [ "$compl_noquote" != 1 -a "$compl_filenames" = 1 ]; then
-        if [ "${COMPREPLY::1}" = '~' -a -z "$quotes" ]; then
-            # don't quote the tilde
-            printf -v COMPREPLY '~%q' "${COMPREPLY:1}"
-        else
-            printf -v COMPREPLY %q "${COMPREPLY:${#quotes}}"
-        fi
-    fi
-    [ "$compl_nospace" != 1 ] && COMPREPLY="$COMPREPLY "
-    [[ "$compl_filenames" == *1* ]] && COMPREPLY="${COMPREPLY/%\/ //}"
 }
 
 _fzf_bash_completion_complete() {
@@ -212,7 +196,19 @@ _fzf_bash_completion_complete() {
         fi
     fi
 
-    COMPREPLY="$(
+    compl_filenames="${compl_filenames}${compl_plusdirs}${compl_dirnames}"
+    if [[ "$compl_filenames" == *1* ]]; then
+        local dir_marker="${_fzf_bash_completion_dir}/dir-marker/target/release/dir-marker"
+    else
+        local dir_marker=cat
+    fi
+
+    printf 'compl_filenames=%q\n' "$compl_filenames" >&"${__evaled}"
+    printf 'compl_noquote=%q\n' "$compl_noquote" >&"${__evaled}"
+    printf 'compl_nospace=%q\n' "$compl_nospace" >&"${__evaled}"
+
+    (
+        exec {out}>&1
         (
             if [ -n "${compgen_actions[*]}" ]; then
                 compgen "${compgen_opts[@]}" -- "$2"
@@ -235,8 +231,22 @@ _fzf_bash_completion_complete() {
                     $compl_command "$@"
             fi
         ) | _fzf_bash_completion_apply_xfilter "$compl_xfilter" \
-          | sed "s/.*/${compl_prefix}&${compl_suffix}/"
-    )"
+          | sed "s/.*/${compl_prefix}&${compl_suffix}/; /./!d" \
+          | tee "/dev/fd/$out" \
+          | if ! grep -q -m1 .; then
+                local compgen_opts=()
+                [ "$compl_bashdefault" = 1 ] && compgen_opts+=( -o bashdefault )
+                [ "$compl_default" = 1 ] && compgen_opts+=( -o default )
+                [ "$compl_dirnames" = 1 ] && compgen_opts+=( -o dirnames )
+                if [ -n "${compgen_opts[*]}" ]; then
+                    compgen "${compgen_opts[@]}" -- "$2"
+                fi
+            fi
+
+        if [ "$compl_plusdirs" = 1 ]; then
+            compgen -o dirnames -- "$2"
+        fi
+    ) | "$dir_marker"
 }
 
 _fzf_bash_completion_apply_xfilter() {

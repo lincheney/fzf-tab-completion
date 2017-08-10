@@ -102,6 +102,7 @@ _fzf_bash_completion_get_results() {
 
 _fzf_bash_completion_default() {
     local value code
+    local compl_bashdefault compl_default compl_dirnames compl_filenames compl_noquote compl_nosort compl_nospace compl_plusdirs
 
     eval "$(
         set -o pipefail

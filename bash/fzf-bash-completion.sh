@@ -21,17 +21,18 @@ fzf_bash_completion() {
     printf '\e[%i;%iH' "${postprint[@]}" >/dev/tty
 
     local find_cmd="${_fzf_bash_completion_dir}/find-cmd/target/release/find-cmd"
-    read start end rest < <("$find_cmd")
-    local point="$(( READLINE_POINT - start ))"
-    local line="${READLINE_LINE:$start:$end-$start}"
-    local first=( ${line::$point} )
-    local COMP_WORDS=( $line )
-    if [[ "$point" = 0 || "${line:$point-1:1}" = ' ' ]]; then
-        first+=( '' )
+    local COMP_WORDS
+    {
+        read start end rest
+        readarray -t COMP_WORDS
+    } < <("$find_cmd")
+
+    local COMP_POINT="$(( READLINE_POINT - start ))"
+    local COMP_LINE="${READLINE_LINE:$start:$end-$start}"
+    if [[ "$COMP_POINT" = 0 || "${COMP_LINE:$COMP_POINT-1:1}" = ' ' ]]; then
+        COMP_WORDS+=( '' )
     fi
-    local COMP_CWORD="$(( ${#first[@]}-1 ))"
-    local COMP_POINT="$point"
-    local COMP_LINE="$line"
+    local COMP_CWORD="$(( ${#COMP_WORDS[@]}-1 ))"
 
     _fzf_bash_completion_expand_alias "${COMP_WORDS[0]}"
     local cmd="${COMP_WORDS[0]}"
@@ -42,7 +43,7 @@ fzf_bash_completion() {
         prev="${COMP_WORDS[$COMP_CWORD-1]}"
     fi
     local cur="${COMP_WORDS[$COMP_CWORD]}"
-    local COMP_WORD_START="${first[-1]}"
+    local COMP_WORD_START="${COMP_WORDS[-1]}"
     local COMP_WORD_END="${cur:${#cur_start}}"
 
     local COMPREPLY=

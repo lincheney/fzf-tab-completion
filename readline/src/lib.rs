@@ -166,6 +166,7 @@ fn _custom_complete(text: *const u8, matches: *const *const c_char) -> Option<Ve
     let matches: Vec<_> = CArray::new(matches).collect();
     let matches = matches.iter().skip(if matches.len() == 1 { 0 } else { 1 });
     for line in matches {
+        if line.is_empty() { continue }
         // break on errors (but otherwise ignore)
         if ! (stdin.write_all(line).is_ok() && stdin.write_all(b"\n").is_ok() ) {
             break

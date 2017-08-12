@@ -18,14 +18,19 @@ impl CArray {
 }
 
 impl Iterator for CArray {
-    type Item = &'static [u8];
-    fn next(&mut self) -> Option<&'static [u8]> {
+    type Item = *const c_char;
+    fn next(&mut self) -> Option<*const c_char> {
         if self.ptr.is_null() { return None }
         if unsafe{ *(self.ptr) }.is_null() { return None }
-        let value = unsafe{ CStr::from_ptr(&**self.ptr) }.to_bytes();
+        let value = unsafe{ &**self.ptr };
+        // let value = unsafe{ CStr::from_ptr(&**self.ptr) }.to_bytes();
         self.ptr = unsafe{ self.ptr.offset(1) };
         Some(value)
     }
+}
+
+fn make_cstr(ptr: *const c_char) -> &'static [u8] {
+    unsafe{ CStr::from_ptr(ptr) }.to_bytes()
 }
 
 mod readline {
@@ -97,6 +102,13 @@ mod readline {
         matches
     }
 
+    pub fn free_match_list(matches: *const *const c_char) {
+        for line in ::CArray::new(matches) {
+            unsafe{ ::libc::free(line as *mut ::libc::c_void) };
+        }
+        unsafe{ ::libc::free(matches as *mut ::libc::c_void) };
+    }
+
     #[link(name = "readline")]
     extern {
         fn rl_refresh_line(count: isize, key: isize) -> isize;
@@ -137,6 +149,7 @@ extern fn custom_complete(text: *const u8, start: isize, end: isize) -> *const *
     let matches = readline::get_completions(text, start, end);
 
     if let Some(value) = _custom_complete(text, matches) {
+        readline::free_match_list(matches);
         readline::vec_to_c_array(value)
     } else {
         matches as *const *const u8
@@ -164,8 +177,10 @@ fn _custom_complete(text: *const u8, matches: *const *const c_char) -> Option<Ve
     let mut stdin = process.stdin.unwrap();
 
     let matches: Vec<_> = CArray::new(matches).collect();
-    let matches = matches.iter().skip(if matches.len() == 1 { 0 } else { 1 });
+    let skip = if matches.len() == 1 { 0 } else { 1 };
+    let matches = matches.into_iter().skip(skip);
     for line in matches {
+        let line = make_cstr(line);
         if line.is_empty() { continue }
         // break on errors (but otherwise ignore)
         if ! (stdin.write_all(line).is_ok() && stdin.write_all(b"\n").is_ok() ) {

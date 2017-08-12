@@ -35,7 +35,7 @@ fn make_cstr(ptr: *const c_char) -> &'static [u8] {
 
 mod readline {
     use std::ffi::CStr;
-    use super::c_char;
+    use std::os::raw::c_char;
 
     type rl_completion_func_t = extern fn(*const u8, isize, isize) -> *const *const u8;
     type rl_compentry_func_t = unsafe extern fn(*const u8, isize) -> *const u8;

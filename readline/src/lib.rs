@@ -144,8 +144,12 @@ extern fn custom_complete(text: *const u8, start: isize, end: isize) -> *const *
 }
 
 fn _custom_complete(text: *const u8, matches: *const *const c_char) -> Option<Vec<String>> {
+    let text = unsafe{ CStr::from_ptr(text as *const c_char) }.to_bytes();
+    let text = std::str::from_utf8(text).unwrap();
+
     let mut command = Command::new("rl_custom_complete");
     command.stdin(Stdio::piped()).stdout(Stdio::piped());
+    command.arg(text);
 
     // pass the readline name to process
     if let Some(name) = readline::get_readline_name() {

@@ -1,0 +1,2 @@
+#!/bin/bash
+fzf -m --tac --height 40% -0 -1

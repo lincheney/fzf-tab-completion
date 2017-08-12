@@ -203,12 +203,11 @@ fn _custom_complete(text: *const u8, matches: *const *const c_char) -> Option<Ve
         Ok(_) => {
             readline::refresh_line();
             let stdout = process.stdout.unwrap();
-            let mut vec: Vec<_> = BufReader::new(stdout).lines().map(|l| l.unwrap()).collect();
-            if vec.len() > 1 {
-                // multiple matches
-                vec.insert(0, String::new());
-            }
-            Some(vec)
+            // readline multi completion doesn't play nice
+            // join by spaces here and insert as one value instead
+            let vec: Vec<_> = BufReader::new(stdout).lines().map(|l| l.unwrap()).collect();
+            let string = vec.join(" ");
+            Some(vec![string])
         }
     }
 }

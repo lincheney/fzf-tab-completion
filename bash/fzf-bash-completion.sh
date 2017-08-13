@@ -129,11 +129,13 @@ _fzf_bash_completion_default() {
 
     if [ "$code" = 0 ]; then
         if [ "$compl_noquote" != 1 -a "$compl_filenames" = 1 ]; then
-            if [ "${COMPREPLY::1}" = '~' -a -z "$quotes" ]; then
-                # don't quote the tilde
+            # never quote the prefix
+            if [ "${COMPREPLY::${#2}}" = "$2" ]; then
+                COMPREPLY="$2$(printf %q "${COMPREPLY:${#2}}")"
+            elif [ "${COMPREPLY::1}" = '~' ]; then
                 printf -v COMPREPLY '~%q' "${COMPREPLY:1}"
             else
-                printf -v COMPREPLY %q "${COMPREPLY:${#quotes}}"
+                printf -v COMPREPLY %q "$COMPREPLY"
             fi
         fi
         [ "$compl_nospace" != 1 ] && COMPREPLY="$COMPREPLY "
@@ -248,7 +250,9 @@ _fzf_bash_completion_complete() {
         if [ "$compl_plusdirs" = 1 ]; then
             compgen -o dirnames -- "$2"
         fi
-    ) | "$dir_marker"
+    ) \
+    | sed "s/^$(_fzf_bash_completion_sed_escape "$2")/$(_fzf_bash_completion_sed_escape "$(sed -r 's/\\(.)/\1/g' <<<"$2")")/" \
+    | "$dir_marker"
 }
 
 _fzf_bash_completion_apply_xfilter() {

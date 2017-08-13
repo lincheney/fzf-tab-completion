@@ -207,7 +207,9 @@ mod test {
         assert_parse_line!("echo ", "\"123\"", "echo \"123\"", vec!["echo", "\"123\""]);
         assert_parse_line!("echo ", "\"123", "echo \"123", vec!["echo", "\"123"]);
         assert_parse_line!("echo ", "\"12$(cat)3\"", "echo \"12$(cat)3\"", vec!["echo", "\"12$(cat)3\""]);
+        assert_parse_line!("echo ", "12$(cat file)3", "echo 12$(cat file)3", vec!["echo", "12$(cat file)3"]);
         assert_parse_line!("echo \"12$(ca", "t)3\"", "cat", vec!["cat"]);
+        assert_parse_line!("echo \"12$(ca", "t file)3\"", "cat file", vec!["cat", "file"]);
         assert_parse_line!("echo \"12$ca", "t3\"", "echo \"12$cat3\"", vec!["echo", "\"12$cat3\""]);
         assert_parse_line!("echo \"as$", "", "echo \"as$", vec!["echo", "\"as$"]);
         assert_parse_line!("echo", " '12(3'", "echo '12(3'", vec!["echo", "'12(3'"]);

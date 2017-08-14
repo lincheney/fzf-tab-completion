@@ -128,16 +128,23 @@ _fzf_bash_completion_default() {
     )"
 
     if [ "$code" = 0 ]; then
-        if [ "$compl_noquote" != 1 -a "$compl_filenames" = 1 ]; then
-            # never quote the prefix
-            if [ "${COMPREPLY::${#2}}" = "$2" ]; then
-                COMPREPLY="$2$(printf %q "${COMPREPLY:${#2}}")"
-            elif [ "${COMPREPLY::1}" = '~' ]; then
-                printf -v COMPREPLY '~%q' "${COMPREPLY:1}"
+        readarray -t COMPREPLY < <(
+            if [ "$compl_noquote" != 1 -a "$compl_filenames" = 1 ]; then
+                while read -r line; do
+                    # never quote the prefix
+                    if [ "${line::${#2}}" = "$2" ]; then
+                        printf '%s%q\n' "$2" "${line:${#2}}"
+                    elif [ "${line::1}" = '~' ]; then
+                        printf '~%q\n' "${line:1}"
+                    else
+                        printf '%q\n' "$line"
+                    fi
+                done
             else
-                printf -v COMPREPLY %q "$COMPREPLY"
-            fi
-        fi
+                cat
+            fi <<<"$COMPREPLY"
+        )
+        COMPREPLY="${COMPREPLY[*]}"
         [ "$compl_nospace" != 1 ] && COMPREPLY="$COMPREPLY "
         [[ "$compl_filenames" == *1* ]] && COMPREPLY="${COMPREPLY/%\/ //}"
     fi

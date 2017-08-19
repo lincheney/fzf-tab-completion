@@ -204,6 +204,7 @@ _fzf_bash_completion_complete() {
             if [ "$newcompspec" != "$compspec" ]; then
                 return 124
             fi
+            "$compl_function" "$@" >/dev/null
         fi
     fi
 

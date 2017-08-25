@@ -21,15 +21,14 @@ fzf_bash_completion() {
     printf '\e[%i;%iH' "${postprint[@]}" >/dev/tty
 
     local find_cmd="${_fzf_bash_completion_dir}/find-cmd/target/release/find-cmd"
-    local COMP_WORDS
+    local COMP_WORDS COMP_CWORD
     {
-        read start end index rest
+        read start end COMP_CWORD sindex rest
         readarray -t COMP_WORDS
     } < <("$find_cmd")
 
     local COMP_POINT="$(( READLINE_POINT - start ))"
     local COMP_LINE="${READLINE_LINE:$start:$end-$start}"
-    local COMP_CWORD="$index"
     if [[ "$COMP_POINT" = 0 || "${COMP_LINE:$COMP_POINT-1:1}" =~ [[:space:]] ]]; then
         COMP_WORDS=( "${COMP_WORDS[@]::COMP_CWORD}" '' "${COMP_WORDS[@]:COMP_CWORD}" )
     else
@@ -45,14 +44,14 @@ fzf_bash_completion() {
         prev="${COMP_WORDS[$COMP_CWORD-1]}"
     fi
     local cur="${COMP_WORDS[$COMP_CWORD]}"
-    # local COMP_WORD_START="${COMP_WORDS[-1]}"
-    # local COMP_WORD_END="${cur:${#cur_start}}"
+    local COMP_WORD_START="${cur::$sindex}"
+    local COMP_WORD_END="${cur:$sindex}"
 
     local COMPREPLY=
-    fzf_bash_completer "$cmd" "$cur" "$prev"
+    fzf_bash_completer "$cmd" "$COMP_WORD_START" "$prev"
     if [ -n "$COMPREPLY" ]; then
-        READLINE_LINE="${READLINE_LINE::$READLINE_POINT-${#cur}}${COMPREPLY}${READLINE_LINE:$READLINE_POINT}"
-        READLINE_POINT="$(( $READLINE_POINT+${#COMPREPLY}-${#cur} ))"
+        READLINE_LINE="${READLINE_LINE::$READLINE_POINT-${#COMP_WORD_START}}${COMPREPLY}${READLINE_LINE:$READLINE_POINT}"
+        READLINE_POINT="$(( $READLINE_POINT+${#COMPREPLY}-${#COMP_WORD_START} ))"
     fi
 
     # restore initial cursor position
@@ -87,6 +86,7 @@ _fzf_bash_completion_expand_alias() {
 
 _fzf_bash_completion_get_results() {
     if [[ "$2" =~ .*\$(\{?)([A-Za-z0-9_]*)$ ]]; then
+        # environment variables
         local brace="${BASH_REMATCH[1]}"
         local filter="${BASH_REMATCH[2]}"
         if [ -n "$filter" ]; then
@@ -96,8 +96,10 @@ _fzf_bash_completion_get_results() {
         fi
         compgen -v -P "$prefix" -S "${brace:+\}}" -- "$filter"
     elif [ "$COMP_CWORD" == 0 ]; then
+        # commands
         compopt -o filenames
         compgen -abc -- "$2"
+    # elif
     else
         _fzf_bash_completion_complete "$@"
     fi

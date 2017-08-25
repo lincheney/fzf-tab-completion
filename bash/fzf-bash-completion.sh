@@ -105,17 +105,24 @@ _fzf_bash_completion_get_results() {
         local suffix="${2##*/}"
         local prefix="${2::-${#suffix}}"
         suffix="${suffix::-${#trigger}}"
+
         local flags=()
         if [[ "$1" =~ cd|pushd|rmdir ]]; then
             flags=( -type d )
         fi
+
+        if [ "${prefix::2}" != ./ ]; then
+            prefix="./$prefix"
+        fi
+
         # smart case
         if [ "${suffix,,}" = "${suffix}" ]; then
             flags+=( -ipath "$prefix$suffix*" )
         else
             flags+=( -path "$prefix$suffix*" )
         fi
-        find -L "${prefix:-./}" "${flags[@]}" 2>/dev/null | sed 's,^\./,,'
+
+        find -L "$prefix" "${flags[@]}" 2>/dev/null | sed 's,^\./,,'
     else
         _fzf_bash_completion_complete "$@"
     fi

@@ -29,9 +29,11 @@ fzf_bash_completion() {
 
     local COMP_POINT="$(( READLINE_POINT - start ))"
     local COMP_LINE="${READLINE_LINE:$start:$end-$start}"
-    local COMP_CWORD="$(( index-1 ))"
-    if [[ "$COMP_POINT" = 0 || "${COMP_LINE:$COMP_POINT-1:1}" = ' ' ]]; then
+    local COMP_CWORD="$index"
+    if [[ "$COMP_POINT" = 0 || "${COMP_LINE:$COMP_POINT-1:1}" =~ [[:space:]] ]]; then
         COMP_WORDS=( "${COMP_WORDS[@]::COMP_CWORD}" '' "${COMP_WORDS[@]:COMP_CWORD}" )
+    else
+        COMP_CWORD="$(( COMP_CWORD-1 ))"
     fi
 
     _fzf_bash_completion_expand_alias "${COMP_WORDS[0]}"

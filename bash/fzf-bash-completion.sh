@@ -111,8 +111,10 @@ _fzf_bash_completion_get_results() {
             flags=( -type d )
         fi
 
-        if [ "${prefix::2}" != ./ ]; then
+        if [[ ! "$prefix" =~ (.?/).* ]]; then
             prefix="./$prefix"
+        elif [ "${prefix::2}" = '~/' ]; then
+            prefix="${HOME}/${prefix:2}"
         fi
 
         # smart case

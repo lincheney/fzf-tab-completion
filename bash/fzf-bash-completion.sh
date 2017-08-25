@@ -85,6 +85,7 @@ _fzf_bash_completion_expand_alias() {
 }
 
 _fzf_bash_completion_get_results() {
+    local trigger="${FZF_COMPLETION_TRIGGER-**}"
     if [[ "$2" =~ .*\$(\{?)([A-Za-z0-9_]*)$ ]]; then
         # environment variables
         local brace="${BASH_REMATCH[1]}"
@@ -99,7 +100,22 @@ _fzf_bash_completion_get_results() {
         # commands
         compopt -o filenames
         compgen -abc -- "$2"
-    # elif
+    elif [[ "$2" == *"$trigger" ]]; then
+        # replicate fzf ** trigger completion
+        local suffix="${2##*/}"
+        local prefix="${2::-${#suffix}}"
+        suffix="${suffix::-${#trigger}}"
+        local flags=()
+        if [[ "$1" =~ cd|pushd|rmdir ]]; then
+            flags=( -type d )
+        fi
+        # smart case
+        if [ "${suffix,,}" = "${suffix}" ]; then
+            flags+=( -ipath "$prefix$suffix*" )
+        else
+            flags+=( -path "$prefix$suffix*" )
+        fi
+        find -L "${prefix:-./}" "${flags[@]}" 2>/dev/null | sed 's,^\./,,'
     else
         _fzf_bash_completion_complete "$@"
     fi

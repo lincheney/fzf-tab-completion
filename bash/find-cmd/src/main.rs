@@ -206,85 +206,85 @@ mod test {
     use super::parse_line;
 
     macro_rules! assert_parse_line {
-        ($left:expr, $right:expr, $expected:expr, $array:expr, $index:expr) => {
-            let line = concat!($left, $right);
-            let m = parse_line(&line, $left.len(), None);
-            assert_eq!( &line[m.start..m.end], $expected );
-            assert_eq!( m.tokens, $array );
-            assert_eq!( m.index, $index );
+        ($name:ident, $left:expr, $right:expr, $expected:expr, $array:expr, $index:expr) => {
+            #[test]
+            fn $name() {
+                let line = concat!($left, $right);
+                let m = parse_line(&line, $left.len(), None);
+                assert_eq!( &line[m.start..m.end], $expected );
+                assert_eq!( m.tokens, $array );
+                assert_eq!( m.index, $index );
+            }
         }
     }
 
-    #[test]
-    fn test_parse_line() {
-        assert_parse_line!("", "", "", Vec::<&str>::new(), 0);
-        assert_parse_line!("echo ; ", "", "", Vec::<&str>::new(), 0);
+    assert_parse_line!(test_1, "", "", "", Vec::<&str>::new(), 0);
+    assert_parse_line!(test_2, "echo ; ", "", "", Vec::<&str>::new(), 0);
 
-        assert_parse_line!("echo", " 123", "echo 123", vec!["echo", "123"], 1);
-        assert_parse_line!("echo 123 ", "", "echo 123 ", vec!["echo", "123"], 2);
-        assert_parse_line!(" echo", " 123", "echo 123", vec!["echo", "123"], 1);
-        assert_parse_line!("echo \\\n", " 123", "echo \\\n 123", vec!["echo", "123"], 1);
+    assert_parse_line!(test_31, "echo", " 123", "echo 123", vec!["echo", "123"], 1);
+    assert_parse_line!(test_32, "echo 123 ", "", "echo 123 ", vec!["echo", "123"], 2);
+    assert_parse_line!(test_33, " echo", " 123", "echo 123", vec!["echo", "123"], 1);
+    assert_parse_line!(test_34, "echo \\\n", " 123", "echo \\\n 123", vec!["echo", "123"], 1);
 
-        assert_parse_line!("echo ", "\"123\"", "echo \"123\"", vec!["echo", "\"123\""], 2);
-        assert_parse_line!("echo ", "\"123", "echo \"123", vec!["echo", "\"123"], 2);
-        assert_parse_line!("echo ", "\"12$(cat)3\"", "echo \"12$(cat)3\"", vec!["echo", "\"12$(cat)3\""], 2);
-        assert_parse_line!("echo ", "12$(cat file)3", "echo 12$(cat file)3", vec!["echo", "12$(cat file)3"], 2);
-        assert_parse_line!("echo \"12$(ca", "t)3\"", "cat", vec!["cat"], 1);
-        assert_parse_line!("echo \"12$(ca", "t file)3\"", "cat file", vec!["cat", "file"], 1);
-        assert_parse_line!("echo \"12$ca", "t3\"", "echo \"12$cat3\"", vec!["echo", "\"12$cat3\""], 2);
-        assert_parse_line!("echo \"as$", "", "echo \"as$", vec!["echo", "\"as$"], 2);
-        assert_parse_line!("echo", " '12(3'", "echo '12(3'", vec!["echo", "'12(3'"], 1);
-        assert_parse_line!("echo", " '12(3", "echo '12(3", vec!["echo", "'12(3"], 1);
-        assert_parse_line!("echo", " $'12\\'3'", "echo $'12\\'3'", vec!["echo", "$'12\\'3'"], 1);
-        assert_parse_line!("echo", " '1\\'2\\\\(3'", "echo '1\\'2\\\\(3'", vec!["echo", "'1\\'2\\\\(3'"], 1);
-        assert_parse_line!("`cat`; echo", "", "echo", vec!["echo"], 1);
+    assert_parse_line!(test_411, "echo ", "\"123\"", "echo \"123\"", vec!["echo", "\"123\""], 2);
+    assert_parse_line!(test_412, "echo ", "\"123", "echo \"123", vec!["echo", "\"123"], 2);
+    assert_parse_line!(test_413, "echo ", "\"12$(cat)3\"", "echo \"12$(cat)3\"", vec!["echo", "\"12$(cat)3\""], 2);
+    assert_parse_line!(test_414, "echo ", "12$(cat file)3", "echo 12$(cat file)3", vec!["echo", "12$(cat file)3"], 2);
+    assert_parse_line!(test_415, "echo \"12$(ca", "t)3\"", "cat", vec!["cat"], 1);
+    assert_parse_line!(test_416, "echo \"12$(ca", "t file)3\"", "cat file", vec!["cat", "file"], 1);
+    assert_parse_line!(test_417, "echo \"12$ca", "t3\"", "echo \"12$cat3\"", vec!["echo", "\"12$cat3\""], 2);
+    assert_parse_line!(test_42, "echo \"as$", "", "echo \"as$", vec!["echo", "\"as$"], 2);
+    assert_parse_line!(test_431, "echo", " '12(3'", "echo '12(3'", vec!["echo", "'12(3'"], 1);
+    assert_parse_line!(test_432, "echo", " '12(3", "echo '12(3", vec!["echo", "'12(3"], 1);
+    assert_parse_line!(test_433, "echo", " $'12\\'3'", "echo $'12\\'3'", vec!["echo", "$'12\\'3'"], 1);
+    assert_parse_line!(test_434, "echo", " '1\\'2\\\\(3'", "echo '1\\'2\\\\(3'", vec!["echo", "'1\\'2\\\\(3'"], 1);
+    assert_parse_line!(test_44, "`cat`; echo", "", "echo", vec!["echo"], 1);
 
-        assert_parse_line!("[[ echo", " 123", "echo 123", vec!["echo", "123"], 1);
-        assert_parse_line!("case echo", " 123", "echo 123", vec!["echo", "123"], 1);
-        assert_parse_line!("do echo", " 123", "echo 123", vec!["echo", "123"], 1);
-        assert_parse_line!("done echo", " 123", "echo 123", vec!["echo", "123"], 1);
-        assert_parse_line!("elif echo", " 123", "echo 123", vec!["echo", "123"], 1);
-        assert_parse_line!("else echo", " 123", "echo 123", vec!["echo", "123"], 1);
-        assert_parse_line!("esac echo", " 123", "echo 123", vec!["echo", "123"], 1);
-        assert_parse_line!("fi echo", " 123", "echo 123", vec!["echo", "123"], 1);
-        assert_parse_line!("for echo", " 123", "echo 123", vec!["echo", "123"], 1);
-        assert_parse_line!("function echo", " 123", "echo 123", vec!["echo", "123"], 1);
-        assert_parse_line!("if echo", " 123", "echo 123", vec!["echo", "123"], 1);
-        assert_parse_line!("in echo", " 123", "echo 123", vec!["echo", "123"], 1);
-        assert_parse_line!("select echo", " 123", "echo 123", vec!["echo", "123"], 1);
-        assert_parse_line!("then echo", " 123", "echo 123", vec!["echo", "123"], 1);
-        assert_parse_line!("time echo", " 123", "echo 123", vec!["echo", "123"], 1);
-        assert_parse_line!("until echo", " 123", "echo 123", vec!["echo", "123"], 1);
-        assert_parse_line!("while echo", " 123", "echo 123", vec!["echo", "123"], 1);
-        assert_parse_line!("whil", "e echo 123", "while", vec!["while"], 1);
+    assert_parse_line!(test_51, "[[ echo", " 123", "echo 123", vec!["echo", "123"], 1);
+    assert_parse_line!(test_52, "case echo", " 123", "echo 123", vec!["echo", "123"], 1);
+    assert_parse_line!(test_53, "do echo", " 123", "echo 123", vec!["echo", "123"], 1);
+    assert_parse_line!(test_54, "done echo", " 123", "echo 123", vec!["echo", "123"], 1);
+    assert_parse_line!(test_55, "elif echo", " 123", "echo 123", vec!["echo", "123"], 1);
+    assert_parse_line!(test_56, "else echo", " 123", "echo 123", vec!["echo", "123"], 1);
+    assert_parse_line!(test_57, "esac echo", " 123", "echo 123", vec!["echo", "123"], 1);
+    assert_parse_line!(test_58, "fi echo", " 123", "echo 123", vec!["echo", "123"], 1);
+    assert_parse_line!(test_59, "for echo", " 123", "echo 123", vec!["echo", "123"], 1);
+    assert_parse_line!(test_5a, "function echo", " 123", "echo 123", vec!["echo", "123"], 1);
+    assert_parse_line!(test_5b, "if echo", " 123", "echo 123", vec!["echo", "123"], 1);
+    assert_parse_line!(test_5c, "in echo", " 123", "echo 123", vec!["echo", "123"], 1);
+    assert_parse_line!(test_5d, "select echo", " 123", "echo 123", vec!["echo", "123"], 1);
+    assert_parse_line!(test_5e, "then echo", " 123", "echo 123", vec!["echo", "123"], 1);
+    assert_parse_line!(test_5f, "time echo", " 123", "echo 123", vec!["echo", "123"], 1);
+    assert_parse_line!(test_5g, "until echo", " 123", "echo 123", vec!["echo", "123"], 1);
+    assert_parse_line!(test_5h, "while echo", " 123", "echo 123", vec!["echo", "123"], 1);
+    assert_parse_line!(test_5i, "whil", "e echo 123", "while", vec!["while"], 1);
 
-        assert_parse_line!("echo", " 123 ; echo 456", "echo 123 ", vec!["echo", "123"], 1);
-        assert_parse_line!("echo 123 ; echo", " 456", "echo 456", vec!["echo", "456"], 1);
-        assert_parse_line!("echo", " 123; echo 456", "echo 123", vec!["echo", "123"], 1);
-        assert_parse_line!("echo 123; echo", " 456", "echo 456", vec!["echo", "456"], 1);
-        assert_parse_line!("echo", " 123 \n echo 456", "echo 123 ", vec!["echo", "123"], 1);
-        assert_parse_line!("echo 123 \n echo", " 456", "echo 456", vec!["echo", "456"], 1);
-        assert_parse_line!("echo", " 123 && echo 456", "echo 123 ", vec!["echo", "123"], 1);
-        assert_parse_line!("echo 123 && echo", " 456", "echo 456", vec!["echo", "456"], 1);
-        assert_parse_line!("echo", " 123 || echo 456", "echo 123 ", vec!["echo", "123"], 1);
-        assert_parse_line!("echo 123 || echo", " 456", "echo 456", vec!["echo", "456"], 1);
-        assert_parse_line!("echo", " 123 | echo 456", "echo 123 ", vec!["echo", "123"], 1);
-        assert_parse_line!("echo 123 | echo", " 456", "echo 456", vec!["echo", "456"], 1);
-        assert_parse_line!("echo", " 123 |& echo 456", "echo 123 ", vec!["echo", "123"], 1);
-        assert_parse_line!("echo 123 |& echo", " 456", "echo 456", vec!["echo", "456"], 1);
+    assert_parse_line!(test_61, "echo", " 123 ; echo 456", "echo 123 ", vec!["echo", "123"], 1);
+    assert_parse_line!(test_62, "echo 123 ; echo", " 456", "echo 456", vec!["echo", "456"], 1);
+    assert_parse_line!(test_63, "echo", " 123; echo 456", "echo 123", vec!["echo", "123"], 1);
+    assert_parse_line!(test_64, "echo 123; echo", " 456", "echo 456", vec!["echo", "456"], 1);
+    assert_parse_line!(test_65, "echo", " 123 \n echo 456", "echo 123 ", vec!["echo", "123"], 1);
+    assert_parse_line!(test_66, "echo 123 \n echo", " 456", "echo 456", vec!["echo", "456"], 1);
+    assert_parse_line!(test_67, "echo", " 123 && echo 456", "echo 123 ", vec!["echo", "123"], 1);
+    assert_parse_line!(test_68, "echo 123 && echo", " 456", "echo 456", vec!["echo", "456"], 1);
+    assert_parse_line!(test_69, "echo", " 123 || echo 456", "echo 123 ", vec!["echo", "123"], 1);
+    assert_parse_line!(test_6a, "echo 123 || echo", " 456", "echo 456", vec!["echo", "456"], 1);
+    assert_parse_line!(test_6b, "echo", " 123 | echo 456", "echo 123 ", vec!["echo", "123"], 1);
+    assert_parse_line!(test_6c, "echo 123 | echo", " 456", "echo 456", vec!["echo", "456"], 1);
+    assert_parse_line!(test_6d, "echo", " 123 |& echo 456", "echo 123 ", vec!["echo", "123"], 1);
+    assert_parse_line!(test_6e, "echo 123 |& echo", " 456", "echo 456", vec!["echo", "456"], 1);
 
-        assert_parse_line!("echo ${var", "}", "echo ${var}", vec!["echo", "${var}"], 2);
-        assert_parse_line!("echo ${var", "", "echo ${var", vec!["echo", "${var"], 2);
-        assert_parse_line!("echo $(cat) ", "123", "echo $(cat) 123", vec!["echo", "$(cat)", "123"], 3);
-        assert_parse_line!("echo $(ca", "t) 123", "cat", vec!["cat"], 1);
-        assert_parse_line!("echo $(", "cat) 123", "cat", vec!["cat"], 1);
+    assert_parse_line!(test_71, "echo ${var", "}", "echo ${var}", vec!["echo", "${var}"], 2);
+    assert_parse_line!(test_72, "echo ${var", "", "echo ${var", vec!["echo", "${var"], 2);
+    assert_parse_line!(test_73, "echo $(cat) ", "123", "echo $(cat) 123", vec!["echo", "$(cat)", "123"], 3);
+    assert_parse_line!(test_74, "echo $(ca", "t) 123", "cat", vec!["cat"], 1);
+    assert_parse_line!(test_75, "echo $(", "cat) 123", "cat", vec!["cat"], 1);
 
-        assert_parse_line!("KEY=VALUE echo", " 123", "echo 123", vec!["echo", "123"], 1);
-        assert_parse_line!("KE", "Y=VALUE echo 123", "KEY=VALUE", vec!["KEY=VALUE"], 1);
-        assert_parse_line!("KEY=VAL", "UE echo 123", "KEY=VALUE", vec!["KEY=VALUE"], 1);
-        assert_parse_line!("KEY=VA$(ca", "t) echo 123", "cat", vec!["cat"], 1);
-        assert_parse_line!("KEY=VALUE XYZ=", "STUFF echo 123", "XYZ=STUFF", vec!["XYZ=STUFF"], 1);
-        assert_parse_line!("KEY=VALUE XYZ=$(ca", "t) echo 123", "cat", vec!["cat"], 1);
-        assert_parse_line!("KEY=VALUE XYZ=$(ca", "t echo 123", "cat echo 123", vec!["cat", "echo", "123"], 1);
-    }
+    assert_parse_line!(test_81, "KEY=VALUE echo", " 123", "echo 123", vec!["echo", "123"], 1);
+    assert_parse_line!(test_82, "KE", "Y=VALUE echo 123", "KEY=VALUE", vec!["KEY=VALUE"], 1);
+    assert_parse_line!(test_83, "KEY=VAL", "UE echo 123", "KEY=VALUE", vec!["KEY=VALUE"], 1);
+    assert_parse_line!(test_84, "KEY=VA$(ca", "t) echo 123", "cat", vec!["cat"], 1);
+    assert_parse_line!(test_85, "KEY=VALUE XYZ=", "STUFF echo 123", "XYZ=STUFF", vec!["XYZ=STUFF"], 1);
+    assert_parse_line!(test_86, "KEY=VALUE XYZ=$(ca", "t) echo 123", "cat", vec!["cat"], 1);
+    assert_parse_line!(test_87, "KEY=VALUE XYZ=$(ca", "t echo 123", "cat echo 123", vec!["cat", "echo", "123"], 1);
 }

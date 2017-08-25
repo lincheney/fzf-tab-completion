@@ -124,7 +124,8 @@ _fzf_bash_completion_get_results() {
             flags+=( -path "$prefix$suffix*" )
         fi
 
-        find -L "$prefix" "${flags[@]}" 2>/dev/null | sed 's,^\./,,'
+        echo compl_filenames=1 >&"${__evaled}"
+        find -L "$prefix" -mindepth 1 "${flags[@]}" \( -type d -printf "%p/\n" , -type f -print \) 2>/dev/null | sed 's,^\./,,'
     else
         _fzf_bash_completion_complete "$@"
     fi

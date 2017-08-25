@@ -33,8 +33,6 @@ fzf_bash_completion() {
     if [[ "$COMP_POINT" = 0 || "${COMP_LINE:$COMP_POINT-1:1}" = ' ' ]]; then
         COMP_WORDS=( "${COMP_WORDS[@]::COMP_CWORD}" '' "${COMP_WORDS[@]:COMP_CWORD}" )
     fi
-    # local COMP_CWORD="$(( ${#COMP_WORDS[@]}-1 ))"
-    # COMP_WORDS=( "${COMP_WORDS[@]::COMP_CWORD}" )
 
     _fzf_bash_completion_expand_alias "${COMP_WORDS[0]}"
     local cmd="${COMP_WORDS[0]}"

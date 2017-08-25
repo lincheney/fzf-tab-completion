@@ -185,6 +185,7 @@ fn parse_line<'a>(line: &'a str, point: usize, end: Option<&Regex>) -> Match<'a>
 
     if point <= i && index == 0 {
         index = tokens.iter().filter(|t| ! t.is_empty()).count();
+        if point == i && index == 0 { index = 1 };
     }
 
     // let index = tokens.len();
@@ -217,7 +218,7 @@ mod test {
 
     #[test]
     fn test_parse_line() {
-        assert_parse_line!("", "", "", Vec::<&str>::new(), 0);
+        assert_parse_line!("", "", "", Vec::<&str>::new(), 1);
 
         assert_parse_line!("echo", " 123", "echo 123", vec!["echo", "123"], 1);
         assert_parse_line!(" echo", " 123", "echo 123", vec!["echo", "123"], 1);

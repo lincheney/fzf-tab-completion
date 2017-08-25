@@ -184,7 +184,7 @@ fn parse_line<'a>(line: &'a str, point: usize, end: Option<&Regex>) -> Match<'a>
     let tokens: Vec<&str> = tokens.into_iter().filter(|t| ! t.is_empty()).collect();
 
     if point <= i && index == 0 {
-        index = tokens.iter().filter(|t| ! t.is_empty()).count();
+        index = tokens.len();
     }
 
     // let index = tokens.len();

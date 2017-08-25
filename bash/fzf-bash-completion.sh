@@ -13,26 +13,28 @@ _fzf_bash_completion_getpos() {
 
 fzf_bash_completion() {
     # draw first to minimise flicker
-    local READLINE_FULL_LINE="$( (echo "${PS1@P}") 2>/dev/null )${READLINE_LINE}"
-    printf '\e[s%s' "$READLINE_FULL_LINE"
-    local postprint=( $(_fzf_bash_completion_getpos) )
-    printf '\e[u'
-    local initial=( $(_fzf_bash_completion_getpos) )
-    printf '\e[%i;%iH' "${postprint[@]}" >/dev/tty
+    # local READLINE_FULL_LINE="$( (echo "${PS1@P}") 2>/dev/null )${READLINE_LINE}"
+    # printf '\e[s%s' "$READLINE_FULL_LINE"
+    # local postprint=( $(_fzf_bash_completion_getpos) )
+    # printf '\e[u'
+    # local initial=( $(_fzf_bash_completion_getpos) )
+    # printf '\e[%i;%iH' "${postprint[@]}" >/dev/tty
 
     local find_cmd="${_fzf_bash_completion_dir}/find-cmd/target/release/find-cmd"
     local COMP_WORDS
     {
-        read start end rest
+        read start end index rest
         readarray -t COMP_WORDS
     } < <("$find_cmd")
 
     local COMP_POINT="$(( READLINE_POINT - start ))"
     local COMP_LINE="${READLINE_LINE:$start:$end-$start}"
+    local COMP_CWORD="$(( index-1 ))"
     if [[ "$COMP_POINT" = 0 || "${COMP_LINE:$COMP_POINT-1:1}" = ' ' ]]; then
-        COMP_WORDS+=( '' )
+        COMP_WORDS=( "${COMP_WORDS[@]::COMP_CWORD}" '' "${COMP_WORDS[@]:COMP_CWORD}" )
     fi
-    local COMP_CWORD="$(( ${#COMP_WORDS[@]}-1 ))"
+    # local COMP_CWORD="$(( ${#COMP_WORDS[@]}-1 ))"
+    # COMP_WORDS=( "${COMP_WORDS[@]::COMP_CWORD}" )
 
     _fzf_bash_completion_expand_alias "${COMP_WORDS[0]}"
     local cmd="${COMP_WORDS[0]}"
@@ -43,14 +45,14 @@ fzf_bash_completion() {
         prev="${COMP_WORDS[$COMP_CWORD-1]}"
     fi
     local cur="${COMP_WORDS[$COMP_CWORD]}"
-    local COMP_WORD_START="${COMP_WORDS[-1]}"
-    local COMP_WORD_END="${cur:${#cur_start}}"
+    # local COMP_WORD_START="${COMP_WORDS[-1]}"
+    # local COMP_WORD_END="${cur:${#cur_start}}"
 
     local COMPREPLY=
-    fzf_bash_completer "$cmd" "$COMP_WORD_START" "$prev"
+    fzf_bash_completer "$cmd" "$cur" "$prev"
     if [ -n "$COMPREPLY" ]; then
-        READLINE_LINE="${READLINE_LINE::$READLINE_POINT-${#COMP_WORD_START}}${COMPREPLY}${READLINE_LINE:$READLINE_POINT}"
-        READLINE_POINT="$(( $READLINE_POINT+${#COMPREPLY}-${#COMP_WORD_START} ))"
+        READLINE_LINE="${READLINE_LINE::$READLINE_POINT-${#cur}}${COMPREPLY}${READLINE_LINE:$READLINE_POINT}"
+        READLINE_POINT="$(( $READLINE_POINT+${#COMPREPLY}-${#cur} ))"
     fi
 
     # restore initial cursor position

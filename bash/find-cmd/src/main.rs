@@ -29,7 +29,7 @@ lazy_static! {
             r"^(",
             r"('[^']*('|$))|", // ' string
             r"(\$'(\\.|[^'])*('|$))|", // $' string
-            "(\\\\.|[^\\s'\"(){}`])+", // other
+            "(\\\\.|[^;\\s'\"(){}`])+", // other
             r")",
     )).unwrap();
     static ref CLOSE_ROUND_BRACKET_RE: Regex = Regex::new(r"^\)").unwrap();
@@ -219,6 +219,7 @@ mod test {
     #[test]
     fn test_parse_line() {
         assert_parse_line!("", "", "", Vec::<&str>::new(), 1);
+        assert_parse_line!("echo ; ", "", "", Vec::<&str>::new(), 1);
 
         assert_parse_line!("echo", " 123", "echo 123", vec!["echo", "123"], 1);
         assert_parse_line!(" echo", " 123", "echo 123", vec!["echo", "123"], 1);
@@ -259,6 +260,8 @@ mod test {
 
         assert_parse_line!("echo", " 123 ; echo 456", "echo 123 ", vec!["echo", "123"], 1);
         assert_parse_line!("echo 123 ; echo", " 456", "echo 456", vec!["echo", "456"], 1);
+        assert_parse_line!("echo", " 123; echo 456", "echo 123", vec!["echo", "123"], 1);
+        assert_parse_line!("echo 123; echo", " 456", "echo 456", vec!["echo", "456"], 1);
         assert_parse_line!("echo", " 123 \n echo 456", "echo 123 ", vec!["echo", "123"], 1);
         assert_parse_line!("echo 123 \n echo", " 456", "echo 456", vec!["echo", "456"], 1);
         assert_parse_line!("echo", " 123 && echo 456", "echo 123 ", vec!["echo", "123"], 1);

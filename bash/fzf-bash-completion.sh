@@ -13,12 +13,12 @@ _fzf_bash_completion_getpos() {
 
 fzf_bash_completion() {
     # draw first to minimise flicker
-    # local READLINE_FULL_LINE="$( (echo "${PS1@P}") 2>/dev/null )${READLINE_LINE}"
-    # printf '\e[s%s' "$READLINE_FULL_LINE"
-    # local postprint=( $(_fzf_bash_completion_getpos) )
-    # printf '\e[u'
-    # local initial=( $(_fzf_bash_completion_getpos) )
-    # printf '\e[%i;%iH' "${postprint[@]}" >/dev/tty
+    local READLINE_FULL_LINE="$( (echo "${PS1@P}") 2>/dev/null )${READLINE_LINE}"
+    printf '\e[s%s' "$READLINE_FULL_LINE"
+    local postprint=( $(_fzf_bash_completion_getpos) )
+    printf '\e[u'
+    local initial=( $(_fzf_bash_completion_getpos) )
+    printf '\e[%i;%iH' "${postprint[@]}" >/dev/tty
 
     local find_cmd="${_fzf_bash_completion_dir}/find-cmd/target/release/find-cmd"
     local COMP_WORDS

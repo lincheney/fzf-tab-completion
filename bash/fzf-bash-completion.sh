@@ -185,7 +185,7 @@ _fzf_bash_completion_default() {
 
 _fzf_bash_completion_complete() {
     local compgen_actions=()
-    local compspec="$(complete -p "$1" 2>/dev/null || commplete -p '')"
+    local compspec="$(complete -p "$1" 2>/dev/null || complete -p '')"
 
     set -- $compspec "$@"
     shift

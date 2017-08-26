@@ -135,6 +135,9 @@ _fzf_bash_completion_default() {
     local value code
     local compl_bashdefault compl_default compl_dirnames compl_filenames compl_noquote compl_nosort compl_nospace compl_plusdirs
 
+    # preload completions in top shell
+    { complete -p "$1" || __load_completion "$1"; } &>/dev/null
+
     eval "$(
         set -o pipefail
 
@@ -182,12 +185,7 @@ _fzf_bash_completion_default() {
 
 _fzf_bash_completion_complete() {
     local compgen_actions=()
-    local compspec="$(complete -p "$1" 2>/dev/null)"
-
-    if [ -z "$compspec" ]; then
-        _completion_loader "$@"
-        compspec="$(complete -p "$1" 2>/dev/null || complete -p '')"
-    fi
+    local compspec="$(complete -p "$1" 2>/dev/null || commplete -p '')"
 
     set -- $compspec "$@"
     shift

@@ -190,36 +190,38 @@ _fzf_bash_completion_complete() {
     set -- $compspec "$@"
     shift
     while [ "$#" -gt 4 ]; do
-        if [ "$1" = -F ]; then
+        case "$1" in
+        -F)
             local compl_function="$2"
-            shift
-        elif [ "$1" = -C ]; then
+            shift ;;
+        -C)
             local compl_command="$(eval "echo $2")"
-            shift
-        elif [ "$1" = -G ]; then
+            shift ;;
+        -G)
             local compl_globpat="$2"
-            shift
-        elif [ "$1" = -W ]; then
+            shift ;;
+        -W)
             local compl_wordlist="$2"
-            shift
-        elif [ "$1" = -X ]; then
+            shift ;;
+        -X)
             local compl_xfilter="$2"
-            shift
-        elif [ "$1" = -o ]; then
+            shift ;;
+        -o)
             _fzf_bash_completion_compopt -o "$2"
-            shift
-        elif [ "$1" = -A ] ; then
+            shift ;;
+        -A)
             local compgen_opts+=( "$1" "$2" )
-            shift
-        elif [ "$1" = -P ]; then
+            shift ;;
+        -P)
             local compl_prefix="$(_fzf_bash_completion_sed_escape "$2")"
-            shift
-        elif [ "$1" = -S ]; then
+            shift ;;
+        -S)
             local compl_suffix="$(_fzf_bash_completion_sed_escape "$2")"
-            shift
-        elif [[ "$1" =~ -[a-z] ]]; then
+            shift ;;
+        -[a-z])
             compgen_actions+=( "$1" )
-        fi
+            ;;
+        esac
         shift
     done
     shift

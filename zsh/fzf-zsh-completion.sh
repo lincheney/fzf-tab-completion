@@ -10,7 +10,24 @@ fzf_completion() {
     eval "$(
         set -o pipefail
         # hacks
-        compadd() { _fzf_completion_compadd "$@"; }
+        override_compadd() { compadd() { _fzf_completion_compadd "$@"; }; }
+        override_compadd
+
+        # massive hack
+        # _approximate also overrides _compadd, so we have to override their one
+        override_approximate() {
+            functions[_approximate]="unfunction compadd; { ${functions[_approximate]//builtin compadd /_fzf_completion_compadd } } always { override_compadd }"
+        }
+
+        if [[ "$functions[approximate]" == 'builtin autoload'* ]]; then
+            _approximate() {
+                builtin autoload +X _approximate
+                override_approximate
+                _approximate "$@"
+            }
+        else
+            override_approximate
+        fi
 
         exec {__evaled}>&1
         value="$(
@@ -39,7 +56,7 @@ fzf_completion() {
             ;;
         1)
             # run all compadds with no matches, in case any messages to display
-            eval "${(j.;.)__compadd_args} --"
+            eval "${(j.;.)__compadd_args:-true} --"
             ;;
     esac
     tput cuu "$(( BUFFERLINES ))" # move back up

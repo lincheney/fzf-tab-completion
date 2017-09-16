@@ -26,16 +26,22 @@ fzf_completion() {
         printf 'code=%q\n' "$code"
     )"
 
-    if [ "$code" = 0 ]; then
-        local opts index
-        while IFS="$_FZF_COMPLETION_SEP" read -r -A value; do
-            index="${value[1]}"
-            opts="${__compadd_args[$index]}"
-            eval "$opts -- ${(q)value[2]}"
-        done <<<"$value"
-        # insert everything added by fzf
-        compstate[insert]=all
-    fi
+    case "$code" in
+        0)
+            local opts index
+            while IFS="$_FZF_COMPLETION_SEP" read -r -A value; do
+                index="${value[1]}"
+                opts="${__compadd_args[$index]}"
+                eval "$opts -- ${(q)value[2]}"
+            done <<<"$value"
+            # insert everything added by fzf
+            compstate[insert]=all
+            ;;
+        1)
+            # run all compadds with no matches, in case any messages to display
+            eval "${(j.;.)__compadd_args} --"
+            ;;
+    esac
     tput cuu "$(( BUFFERLINES ))" # move back up
     zle -I
 }

@@ -240,7 +240,7 @@ _fzf_bash_completion_complete() {
 
     compl_filenames="${compl_filenames}${compl_plusdirs}${compl_dirnames}"
     if [[ "$compl_filenames" == *1* ]]; then
-        local dir_marker="${_fzf_bash_completion_dir}/dir-marker/target/release/dir-marker"
+        local dir_marker=_fzf_bash_completion_dir_marker
     else
         local dir_marker=cat
     fi
@@ -304,6 +304,21 @@ _fzf_bash_completion_apply_xfilter() {
     else
         cat
     fi
+}
+
+_fzf_bash_completion_dir_marker() {
+    while read -r line; do
+        # adapted from __expand_tilde_by_ref
+        if [[ "$line" == \~* ]]; then
+            if [[ ${!1} == */* ]]; then
+                eval expanded="${line/%\/*}"/'${line#*/}';
+            else
+                eval expanded="$line";
+            fi
+        fi
+        [ -d "${expanded:-$line}" ] && line="$line/"
+        echo "$line"
+    done
 }
 
 _fzf_bash_completion_compopt() {

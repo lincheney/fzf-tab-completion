@@ -1,8 +1,0 @@
-[package]
-name = "dir-marker"
-version = "0.1.0"
-authors = ["林千里 <lincheney@gmail.com>"]
-
-[dependencies]
-shellexpand = "1.0"
-users = "~ 0.5"

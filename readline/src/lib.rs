@@ -1,5 +1,3 @@
-#[macro_use]
-extern crate lazy_static;
 extern crate libc;
 
 use std::io::{Write, BufReader, BufRead};
@@ -37,7 +35,9 @@ mod readline {
     use std::ffi::CStr;
     use std::os::raw::c_char;
 
+    #[allow(non_camel_case_types)]
     type rl_completion_func_t = extern fn(*const u8, isize, isize) -> *const *const u8;
+    #[allow(non_camel_case_types)]
     type rl_compentry_func_t = unsafe extern fn(*const u8, isize) -> *const u8;
 
     pub fn refresh_line() {
@@ -53,7 +53,7 @@ mod readline {
         unsafe {
             original_rl_attempted_completion_function = rl_attempted_completion_function;
             rl_attempted_completion_function = Some(new_function);
-            let value = RL_COMPLETE(ignore, key);
+            let value = rl_complete(ignore, key);
             rl_attempted_completion_function = original_rl_attempted_completion_function;
             value
         }
@@ -79,6 +79,7 @@ mod readline {
         return ptr;
     }
 
+    #[allow(non_upper_case_globals)]
     static mut original_rl_attempted_completion_function: Option<rl_completion_func_t> = None;
 
     pub fn get_completions(text: *const u8, start: isize, end: isize) -> *const *const c_char {
@@ -118,6 +119,8 @@ mod readline {
 
         fn rl_completion_entry_function(text: *const u8, state: isize) -> *const u8;
         fn rl_filename_completion_function(text: *const u8, state: isize) -> *const u8;
+
+        fn rl_complete(ignore: isize, key: isize) -> isize;
     }
 
     // not sure why we need this
@@ -127,21 +130,10 @@ mod readline {
             pub static rl_completion_entry_function: Option<super::rl_compentry_func_t>;
         }
     }
-
-    // look up fn via dlsym
-    fn get_original_fn(name: &str) -> unsafe fn(isize, isize)->isize {
-        let ptr = name.as_ptr();
-        let func = unsafe{ ::libc::dlsym(::libc::RTLD_NEXT, ptr as *const i8) };
-        unsafe{ ::std::mem::transmute(func) }
-    }
-
-    lazy_static! {
-        pub static ref RL_COMPLETE: unsafe fn(isize, isize)->isize = get_original_fn("rl_complete\0");
-    }
 }
 
 #[no_mangle]
-pub extern fn rl_complete(ignore: isize, key: isize) -> isize {
+pub extern fn rl_custom_function(ignore: isize, key: isize) -> isize {
     readline::hijack_completion(ignore, key, custom_complete)
 }
 

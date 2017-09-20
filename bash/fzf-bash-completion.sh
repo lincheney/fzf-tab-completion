@@ -98,8 +98,8 @@ _fzf_bash_completion_get_results() {
         compgen -v -P "$prefix" -S "${brace:+\}}" -- "$filter"
     elif [ "$COMP_CWORD" == 0 ]; then
         # commands
-        compopt -o filenames
-        compgen -abc -- "$2"
+        echo compl_filenames=1 >&"${__evaled}"
+        compgen -abc -- "$2" | _fzf_bash_completion_dir_marker
     elif [[ "$2" == *"$trigger" ]]; then
         # replicate fzf ** trigger completion
         local suffix="${2##*/}"

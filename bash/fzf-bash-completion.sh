@@ -164,8 +164,10 @@ _fzf_bash_completion_default() {
         readarray -t COMPREPLY < <(
             if [ "$compl_noquote" != 1 -a "$compl_filenames" = 1 ]; then
                 while read -r line; do
+                    if [ "$line" = "$2" ]; then
+                        echo "$line"
                     # never quote the prefix
-                    if [ "${line::${#2}}" = "$2" ]; then
+                    elif [ "${line::${#2}}" = "$2" ]; then
                         printf '%s%q\n' "$2" "${line:${#2}}"
                     elif [ "${line::1}" = '~' ]; then
                         printf '~%q\n' "${line:1}"

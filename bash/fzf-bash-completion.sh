@@ -65,10 +65,7 @@ fzf_bash_completion() {
         READLINE_POINT="$(( $READLINE_POINT+${#COMPREPLY}-${#COMP_WORD_START} ))"
     fi
 
-    if (( endpos[0] - _FZF_COMPLETION_POS[0] )); then
-        tput cuu "$(( endpos[0] - _FZF_COMPLETION_POS[0] ))"
-    fi
-
+    tput cuu "$(( endpos[0] - _FZF_COMPLETION_POS[0] ))"
     printf '\r'
 }
 

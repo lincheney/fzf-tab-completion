@@ -322,12 +322,10 @@ _fzf_bash_completion_apply_xfilter() {
 _fzf_bash_completion_dir_marker() {
     while read -r line; do
         # adapted from __expand_tilde_by_ref
-        if [[ "$line" == \~* ]]; then
-            if [[ ${!1} == */* ]]; then
-                eval expanded="${line/%\/*}"/'${line#*/}';
-            else
-                eval expanded="$line";
-            fi
+        if [[ "$line" == \~*/* ]]; then
+            eval expanded="${line/%\/*}"/'${line#*/}';
+        elif [[ "$line" == \~* ]]; then
+            eval expanded="$line";
         fi
         [ -d "${expanded:-$line}" ] && line="$line/"
         echo "$line"

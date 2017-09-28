@@ -39,7 +39,7 @@ fzf_bash_completion() {
     } < <("$find_cmd")
 
     local COMP_POINT="$(( READLINE_POINT - start ))"
-    local COMP_LINE="${READLINE_LINE:$start:$end-$start}"
+    local COMP_LINE="${READLINE_LINE:$start:$COMP_POINT}"
     if [[ "$COMP_POINT" = 0 || "${COMP_LINE:$COMP_POINT-1:1}" =~ [[:space:]] ]]; then
         COMP_WORDS=( "${COMP_WORDS[@]::COMP_CWORD}" '' "${COMP_WORDS[@]:COMP_CWORD}" )
     else

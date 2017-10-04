@@ -6,6 +6,7 @@ _fzf_bash_completion_sed_escape() {
 }
 
 fzf_bash_completion() {
+    echo "$READLINE_LINE" >/dev/tty
     local find_cmd="${_fzf_bash_completion_dir}/find-cmd/target/release/find-cmd"
     local COMP_WORDS COMP_CWORD
     {
@@ -40,6 +41,7 @@ fzf_bash_completion() {
         READLINE_POINT="$(( $READLINE_POINT+${#COMPREPLY}-${#COMP_WORD_START} ))"
     fi
 
+    tput cuu "$(( ${#READLINE_LINE} / COLUMNS + 1 ))" >/dev/tty
     printf '\r'
 }
 

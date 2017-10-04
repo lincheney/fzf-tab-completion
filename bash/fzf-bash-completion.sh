@@ -1,36 +1,11 @@
 _fzf_bash_completion_dir="$(dirname "$(readlink -e "${BASH_SOURCE[0]}")")"
 _FZF_COMPLETION_SEP=$'\x7f'
-_FZF_COMPLETION_ORIG_TERM="$TERM"
-_FZF_COMPLETION_TERM="$TERM-fzf-completion-hack"
-
-{
-    # remove clr_eol to stop readline clearing everything
-    if ! infocmp "$_FZF_COMPLETION_TERM"; then
-        tic -sx <(echo "$_FZF_COMPLETION_TERM,"; infocmp -1 | sed '1,2d; /\sel=/d' )
-    fi
-} &>/dev/null
 
 _fzf_bash_completion_sed_escape() {
     sed 's/[.[\*^$\/]/\\&/g' <<<"$1"
 }
 
-_fzf_bash_completion_getpos() {
-    tput u7 > /dev/tty
-    IFS=';' read -r -d R -a pos
-    echo "$(( ${pos[0]/#*[/} )) $(( pos[1] ))"
-}
-
-fzf_bash_completion_term_hack() {
-    _FZF_COMPLETION_READLINE_POINT="$READLINE_POINT"
-    TERM="$_FZF_COMPLETION_TERM"
-    _FZF_COMPLETION_POS=( $(_fzf_bash_completion_getpos) )
-}
-
 fzf_bash_completion() {
-    TERM="$_FZF_COMPLETION_ORIG_TERM"
-    READLINE_POINT="$_FZF_COMPLETION_READLINE_POINT"
-    local endpos=( $(_fzf_bash_completion_getpos) )
-
     local find_cmd="${_fzf_bash_completion_dir}/find-cmd/target/release/find-cmd"
     local COMP_WORDS COMP_CWORD
     {
@@ -65,7 +40,6 @@ fzf_bash_completion() {
         READLINE_POINT="$(( $READLINE_POINT+${#COMPREPLY}-${#COMP_WORD_START} ))"
     fi
 
-    tput cuu "$(( endpos[0] - _FZF_COMPLETION_POS[0] ))"
     printf '\r'
 }
 

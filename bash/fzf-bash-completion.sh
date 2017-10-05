@@ -65,7 +65,9 @@ fzf_bash_completion() {
         READLINE_POINT="$(( $READLINE_POINT+${#COMPREPLY}-${#COMP_WORD_START} ))"
     fi
 
-    tput cuu "$(( endpos[0] - _FZF_COMPLETION_POS[0] ))"
+    # tput doesn't work??
+    # tput cuu "$(( endpos[0] - _FZF_COMPLETION_POS[0] ))" >/dev/tty
+    printf '\e[%iA' "$(( endpos[0] - _FZF_COMPLETION_POS[0] ))" >/dev/tty
     printf '\r'
 }
 

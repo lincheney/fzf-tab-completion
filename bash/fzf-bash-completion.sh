@@ -279,6 +279,8 @@ _fzf_bash_completion_complete() {
                 COMP_LINE="$COMP_LINE" COMP_POINT="$COMP_POINT" COMP_KEY="$COMP_KEY" COMP_TYPE="$COMP_TYPE" \
                     $compl_command "$@"
             fi
+
+            echo
         ) | _fzf_bash_completion_apply_xfilter "$compl_xfilter" \
           | sed "s/.*/${compl_prefix}&${compl_suffix}/; /./!d" \
           | if read -r line; then

@@ -71,10 +71,6 @@ fzf_bash_completion() {
     printf '\r'
 }
 
-fzf_bash_completer() {
-    _fzf_bash_completion_default "$@"
-}
-
 _fzf_bash_completion_selector() {
     sed -r "s/^.{${#2}}/&$_FZF_COMPLETION_SEP/" \
     | FZF_DEFAULT_OPTS="--height ${FZF_TMUX_HEIGHT:-40%} --reverse $FZF_DEFAULT_OPTS $FZF_COMPLETION_OPTS" \
@@ -141,7 +137,7 @@ _fzf_bash_completion_get_results() {
     fi
 }
 
-_fzf_bash_completion_default() {
+fzf_bash_completer() {
     local value code
     local compl_bashdefault compl_default compl_dirnames compl_filenames compl_noquote compl_nosort compl_nospace compl_plusdirs
 

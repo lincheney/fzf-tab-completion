@@ -262,7 +262,6 @@ _fzf_bash_completion_complete() {
     printf 'compl_nospace=%q\n' "$compl_nospace" >&"${__evaled}"
 
     (
-        exec {out}>&1
         (
             if [ -n "${compgen_actions[*]}" ]; then
                 compgen "${compgen_opts[@]}" -- "$2"
@@ -286,8 +285,9 @@ _fzf_bash_completion_complete() {
             fi
         ) | _fzf_bash_completion_apply_xfilter "$compl_xfilter" \
           | sed "s/.*/${compl_prefix}&${compl_suffix}/; /./!d" \
-          | tee "/dev/fd/$out" \
-          | if ! grep -q -m1 .; then
+          | if read -r line; then
+                echo "$line"; cat
+            else
                 local compgen_opts=()
                 [ "$compl_bashdefault" = 1 ] && compgen_opts+=( -o bashdefault )
                 [ "$compl_default" = 1 ] && compgen_opts+=( -o default )

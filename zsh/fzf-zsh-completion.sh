@@ -8,7 +8,7 @@ fzf_completion() {
     local __compadd_args=()
 
     eval "$(
-        set -o pipefail
+        # set -o pipefail
         # hacks
         override_compadd() { compadd() { _fzf_completion_compadd "$@"; }; }
         override_compadd

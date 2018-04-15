@@ -66,7 +66,7 @@ fzf_completion() {
 _fzf_completion_selector() {
     read -r first || return 1 # no input
     if ! read -r second; then
-        echo "$first" && return # only one input
+        printf %s "$first" && return # only one input
     fi
 
     tput cud1 >/dev/tty # fzf clears the line on exit so move down one

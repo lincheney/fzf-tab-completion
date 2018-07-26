@@ -1,50 +1,117 @@
-_fzf_bash_completion_dir="$(dirname "$(readlink -e "${BASH_SOURCE[0]}")")"
 _FZF_COMPLETION_SEP=$'\x7f'
-_FZF_COMPLETION_ORIG_TERM="$TERM"
-_FZF_COMPLETION_TERM="$TERM-fzf-completion-hack"
-
-{
-    # remove clr_eol to stop readline clearing everything
-    if ! infocmp "$_FZF_COMPLETION_TERM"; then
-        tic -sx <(echo "$_FZF_COMPLETION_TERM,"; infocmp -1 | sed '1,2d; /\sel=/d' )
-    fi
-} &>/dev/null
 
 _fzf_bash_completion_sed_escape() {
     sed 's/[.[\*^$\/]/\\&/g' <<<"$1"
 }
 
-_fzf_bash_completion_getpos() {
-    tput u7 > /dev/tty
-    IFS=';' read -r -d R -a pos
-    echo "$(( ${pos[0]/#*[/} )) $(( pos[1] ))"
+# shell parsing stuff
+
+_fzf_bash_completion_shell_split() {
+    egrep -o -e ';|\(|\)|\{|\}' -e "(\\\\.|[^\"'[:space:];(){}])+" -e "\\\$'(\\\\.|[^'])*('|$)" -e "'[^']*('|$)" -e "\"(\\\\.|\\\$(\$|[^(])|[^\"\$])*(\"|\$)" -e '".*' -e .
 }
 
-fzf_bash_completion_term_hack() {
-    _FZF_COMPLETION_READLINE_POINT="$READLINE_POINT"
-    TERM="$_FZF_COMPLETION_TERM"
-    _FZF_COMPLETION_POS=( $(_fzf_bash_completion_getpos) )
+_fzf_bash_completion_flatten_subshells() {
+    (
+        local count=0 buffer=
+        tac | while IFS= read -r line; do
+            case "$line" in
+                \(|\{) (( count -- )) ;;
+                \)|\}) (( count ++ )) ;;
+            esac
+
+            if (( count < 0 )); then
+                return
+            elif (( count > 0 )); then
+                buffer="$line$buffer"
+            else
+                echo "$line$buffer"
+                buffer=
+            fi
+        done
+        echo -n "$buffer"
+    ) | tac
+}
+
+_fzf_bash_completion_find_matching_bracket() {
+    local count=0
+    while IFS=: read num bracket; do
+        if [ "$bracket" = "$1" ]; then
+            (( count++ ))
+            if (( count > 0 )); then
+                echo "$num"
+                return 0
+            fi
+        else
+            (( count -- ))
+        fi
+    done < <(fgrep $'(\n)' -n)
+    return 1
+}
+
+_fzf_bash_completion_parse_dq() {
+    local words="$(cat)"
+    local last="$(<<<"$words" tail -n1)"
+
+    if [[ "$last" == \"* ]]; then
+        local shell="${last:1}" _shell joined
+        local word=
+        while true; do
+            # we are in a double quoted string
+            _shell="$(<<<"$shell" sed -r 's/^(\\.|[^"$])*\$\(//')"
+            echo "$_shell" >/dev/tty
+
+            if [ "$shell" = "$_shell" ]; then
+                # no subshells
+                break
+            fi
+
+            word+="${shell:0:-${#_shell}-2}"
+            shell="$_shell"
+
+            # found a subshell
+            split="$(<<<"$shell" shell_split)"
+            if ! split="$(parse_dq "$split")"; then
+                # bubble up
+                echo "$split"
+                return 1
+            fi
+            if ! num="$(find_matching_bracket ')' <<<"$split")"; then
+                # subshell not closed, this is it
+                echo "$split"
+                return 1
+            fi
+            # subshell closed
+            joined="$(<<<"$split" head -n "$num" | tr -d \\n)"
+            word+=$'\n'"\$($joined"$'\n'
+            shell="${shell:${#joined}}"
+        done
+    fi
+    echo "$words"
+}
+
+_fzf_bash_completion_parse_line() {
+    _fzf_bash_completion_shell_split \
+        | _fzf_bash_completion_parse_dq \
+        | _fzf_bash_completion_flatten_subshells \
+        | tr \\n \\0 | sed -r 's/\x00\s*\x00/\n/g; s/\x00(\S|$)/\1/g; s/\x00(\s*)$/\n\1/' \
+        | tr \\n \\0 | sed -r "s/^(.*\\x00)?(\\[\\[|case|do|done|elif|else|esac|fi|for|function|if|in|select|then|time|until|while|;|&&|\\|[|&]?)\\x00//" \
+        | sed -r 's/^(\s*\x00|\w+=[^\x00]*\x00)*//' \
+        | tr \\0 \\n
 }
 
 fzf_bash_completion() {
-    TERM="$_FZF_COMPLETION_ORIG_TERM"
-    READLINE_POINT="$_FZF_COMPLETION_READLINE_POINT"
-    local endpos=( $(_fzf_bash_completion_getpos) )
+    local COMP_WORDS COMP_CWORD COMP_POINT COMP_LINE
+    local line="${READLINE_LINE:0:READLINE_POINT}"
+    readarray -t COMP_WORDS < <(_fzf_bash_completion_parse_line <<<"$line")
 
-    local find_cmd="${_fzf_bash_completion_dir}/find-cmd/target/release/find-cmd"
-    local COMP_WORDS COMP_CWORD
-    {
-        read start end COMP_CWORD sindex rest
-        readarray -t COMP_WORDS
-    } < <("$find_cmd")
-
-    local COMP_POINT="$(( READLINE_POINT - start ))"
-    local COMP_LINE="${READLINE_LINE:$start:$COMP_POINT}"
-    if [[ "$COMP_POINT" = 0 || "${COMP_LINE:$COMP_POINT-1:1}" =~ [[:space:]] ]]; then
-        COMP_WORDS=( "${COMP_WORDS[@]::COMP_CWORD}" '' "${COMP_WORDS[@]:COMP_CWORD}" )
-    else
-        COMP_CWORD="$(( COMP_CWORD-1 ))"
+    if [[ "${#COMP_WORDS[@]}" = 0 || "$line" =~ .*[[:space:]]$ ]]; then
+        COMP_WORDS+=( '' )
     fi
+    COMP_CWORD="${#COMP_WORDS[@]}"
+    (( COMP_CWORD-- ))
+
+    COMP_LINE="${COMP_WORDS[*]}"
+    COMP_POINT="${#COMP_LINE}"
 
     _fzf_bash_completion_expand_alias "${COMP_WORDS[0]}"
     local cmd="${COMP_WORDS[0]}"
@@ -52,29 +119,25 @@ fzf_bash_completion() {
     if [ "$COMP_CWORD" = 0 ]; then
         prev=
     else
-        prev="${COMP_WORDS[$COMP_CWORD-1]}"
+        prev="${COMP_WORDS[COMP_CWORD-1]}"
     fi
-    local cur="${COMP_WORDS[$COMP_CWORD]}"
-    local COMP_WORD_START="${cur::$sindex}"
-    local COMP_WORD_END="${cur:$sindex}"
+    local cur="${COMP_WORDS[COMP_CWORD]}"
 
     local COMPREPLY=
-    fzf_bash_completer "$cmd" "$COMP_WORD_START" "$prev"
+    fzf_bash_completer "$cmd" "$cur" "$prev"
     if [ -n "$COMPREPLY" ]; then
-        READLINE_LINE="${READLINE_LINE::$READLINE_POINT-${#COMP_WORD_START}}${COMPREPLY}${READLINE_LINE:$READLINE_POINT}"
-        READLINE_POINT="$(( $READLINE_POINT+${#COMPREPLY}-${#COMP_WORD_START} ))"
+        COMPREPLY="${COMPREPLY:${#cur}}"
+        READLINE_LINE="${line}${COMPREPLY}${READLINE_LINE:$READLINE_POINT}"
+        (( READLINE_POINT+=${#COMPREPLY} ))
     fi
 
-    # tput doesn't work??
-    # tput cuu "$(( endpos[0] - _FZF_COMPLETION_POS[0] ))" >/dev/tty
-    printf '\e[%iA' "$(( endpos[0] - _FZF_COMPLETION_POS[0] ))" >/dev/tty
     printf '\r'
 }
 
 _fzf_bash_completion_selector() {
     sed -r "s/^.{${#2}}/&$_FZF_COMPLETION_SEP/" \
     | FZF_DEFAULT_OPTS="--height ${FZF_TMUX_HEIGHT:-40%} --reverse $FZF_DEFAULT_OPTS $FZF_COMPLETION_OPTS" \
-        fzf -1 -0 --prompt "> $2" --nth 2 -d "$_FZF_COMPLETION_SEP" \
+        fzf -1 -0 --prompt "> $line" --nth 2 -d "$_FZF_COMPLETION_SEP" \
     | tr -d "$_FZF_COMPLETION_SEP"
 }
 

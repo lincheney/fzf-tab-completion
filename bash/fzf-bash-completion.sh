@@ -5,9 +5,10 @@ _fzf_bash_completion_sed_escape() {
 }
 
 # shell parsing stuff
+_fzf_bash_completion_egrep="$(command -v rg || command -v ag || echo egrep)"
 
 _fzf_bash_completion_shell_split() {
-    egrep -o -e ';|\(|\)|\{|\}' -e "(\\\\.|[^\"'[:space:];(){}])+" -e "\\\$'(\\\\.|[^'])*('|$)" -e "'[^']*('|$)" -e "\"(\\\\.|\\\$(\$|[^(])|[^\"\$])*(\"|\$)" -e '".*' -e .
+    "$_fzf_bash_completion_egrep" -o -e ';|\(|\)|\{|\}' -e "(\\\\.|[^\"'[:space:];(){}])+" -e "\\\$'(\\\\.|[^'])*('|$)" -e "'[^']*('|$)" -e "\"(\\\\.|\\\$(\$|[^(])|[^\"\$])*(\"|\$)" -e '".*' -e .
 }
 
 _fzf_bash_completion_flatten_subshells() {

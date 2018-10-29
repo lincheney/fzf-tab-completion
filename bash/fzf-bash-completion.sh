@@ -127,9 +127,8 @@ fzf_bash_completion() {
     local COMPREPLY=
     fzf_bash_completer "$cmd" "$cur" "$prev"
     if [ -n "$COMPREPLY" ]; then
-        COMPREPLY="${COMPREPLY:${#cur}}"
-        READLINE_LINE="${line}${COMPREPLY}${READLINE_LINE:$READLINE_POINT}"
-        (( READLINE_POINT+=${#COMPREPLY} ))
+        READLINE_LINE="${line::-${#cur}}${COMPREPLY}${READLINE_LINE:$READLINE_POINT}"
+        (( READLINE_POINT+=${#COMPREPLY} - ${#cur} ))
     fi
 
     printf '\r'

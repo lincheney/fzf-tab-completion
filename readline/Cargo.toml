@@ -8,4 +8,4 @@ libc = "0.2.0"
 
 [lib]
 name = "rl_custom_complete"
-crate-type = ["dylib"]
+crate-type = ["cdylib"]

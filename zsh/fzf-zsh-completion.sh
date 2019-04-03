@@ -105,14 +105,17 @@ _fzf_completion_compadd() {
 
     local prefix="${__optskv[-W]:-.}"
     local __disp_str __hit_str
-    __disp=( "${__hits[@]}" ) # display strings not handled for now
+
     for ((i = 1; i <= $#__hits; i++)); do
-        __hit_str="${__hits[$i]}"
-        __disp_str="${__disp[$i]:-$__hit_str}"
+        __hit_str="${(Q)__hits[$i]}"
+        # display strings not handled for now
+        # __disp_str="${__disp[$i]:-$__hit_str}"
+        __disp_str="$__hit_str"
 
         if [ -n "$__filenames" -a "$__disp_str" = "$__hit_str" -a -d "${prefix}/$__hit_str" ]; then
             __disp_str+=/
         fi
+        printf -v __disp_str %q "$__disp_str"
 
         if [[ "$__disp_str" == "$PREFIX"* ]]; then
             __disp_str="${PREFIX}${_FZF_COMPLETION_SEP}${__disp_str:${#PREFIX}}"
@@ -121,7 +124,7 @@ _fzf_completion_compadd() {
         fi
 
         # index, value, prefix, display
-        echo "${__comp_index}${_FZF_COMPLETION_SEP}${__hit_str}${_FZF_COMPLETION_SEP}$__disp_str"
+        printf %s\\n "${__comp_index}${_FZF_COMPLETION_SEP}${(q)__hit_str}${_FZF_COMPLETION_SEP}${__disp_str}"
     done
     return "$code"
 }

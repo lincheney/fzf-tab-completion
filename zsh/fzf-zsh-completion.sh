@@ -107,15 +107,17 @@ _fzf_completion_compadd() {
     local __disp_str __hit_str
 
     for ((i = 1; i <= $#__hits; i++)); do
-        __hit_str="${(Q)__hits[$i]}"
+        __hit_str="${__hits[$i]}"
         # display strings not handled for now
         # __disp_str="${__disp[$i]:-$__hit_str}"
-        __disp_str="$__hit_str"
+        __disp_str="${(Q)__hit_str}"
 
         if [ -n "$__filenames" -a "$__disp_str" = "$__hit_str" -a -d "${prefix}/$__hit_str" ]; then
             __disp_str+=/
         fi
-        printf -v __disp_str %q "$__disp_str"
+        if [[ "$__disp_str" =~ '[^[:print:]]' ]]; then
+            printf -v __disp_str %q "$__disp_str"
+        fi
 
         if [[ "$__disp_str" == "$PREFIX"* ]]; then
             __disp_str="${PREFIX}${_FZF_COMPLETION_SEP}${__disp_str:${#PREFIX}}"

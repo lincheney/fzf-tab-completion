@@ -175,8 +175,8 @@ _fzf_bash_completion_get_results() {
     elif [[ "$2" == *"$trigger" ]]; then
         # replicate fzf ** trigger completion
         local suffix="${2##*/}"
-        local prefix="${2::-${#suffix}}"
-        suffix="${suffix::-${#trigger}}"
+        local prefix="${2::${#2}-${#suffix}}"
+        suffix="${suffix::${#suffix}-${#trigger}}"
 
         local flags=()
         if [[ "$1" =~ cd|pushd|rmdir ]]; then

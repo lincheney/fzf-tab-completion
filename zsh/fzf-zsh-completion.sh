@@ -72,7 +72,7 @@ _fzf_completion_selector() {
     tput cud1 >/dev/tty # fzf clears the line on exit so move down one
     cat <(printf %s\\n "$first" "$second") - | \
         FZF_DEFAULT_OPTS="--height ${FZF_TMUX_HEIGHT:-40%} --reverse $FZF_DEFAULT_OPTS $FZF_COMPLETION_OPTS" \
-            fzf --prompt "> $PREFIX" -d "$_FZF_COMPLETION_SEP" --with-nth 3.. --nth 2
+            fzf --prompt "> $PREFIX" -d "$_FZF_COMPLETION_SEP" --with-nth 3..4 --nth 2 --preview-window=down:1 --preview='echo -n {5}; echo'
     code="$?"
     tput cuu1 >/dev/tty
     return "$code"
@@ -109,24 +109,24 @@ _fzf_completion_compadd() {
     for ((i = 1; i <= $#__hits; i++)); do
         __hit_str="${__hits[$i]}"
         # display strings not handled for now
-        # __disp_str="${__disp[$i]:-$__hit_str}"
-        __disp_str="${(Q)__hit_str}"
+        __disp_str="${__disp[$i]:-}"
+        __show_str="${(Q)__hit_str}"
 
-        if [ -n "$__filenames" -a "$__disp_str" = "$__hit_str" -a -d "${prefix}/$__hit_str" ]; then
-            __disp_str+=/
+        if [ -n "$__filenames" -a "$__show_str" = "$__hit_str" -a -d "${prefix}/$__hit_str" ]; then
+            __show_str+=/
         fi
-        if [[ "$__disp_str" =~ '[^[:print:]]' ]]; then
-            printf -v __disp_str %q "$__disp_str"
+        if [[ "$__show_str" =~ '[^[:print:]]' ]]; then
+            printf -v __show_str %q "$__show_str"
         fi
 
-        if [[ "$__disp_str" == "$PREFIX"* ]]; then
-            __disp_str="${PREFIX}${_FZF_COMPLETION_SEP}${__disp_str:${#PREFIX}}"
+        if [[ "$__show_str" == "$PREFIX"* ]]; then
+            __show_str="${PREFIX}${_FZF_COMPLETION_SEP}${__show_str:${#PREFIX}}"
         else
-            __disp_str="${_FZF_COMPLETION_SEP}$__disp_str"
+            __show_str="${_FZF_COMPLETION_SEP}$__show_str"
         fi
 
-        # index, value, prefix, display
-        printf %s\\n "${__comp_index}${_FZF_COMPLETION_SEP}${(q)__hit_str}${_FZF_COMPLETION_SEP}${__disp_str}"
+        # index, value, prefix, show, display
+        printf %s\\n "${__comp_index}${_FZF_COMPLETION_SEP}${(q)__hit_str}${_FZF_COMPLETION_SEP}${__show_str}${_FZF_COMPLETION_SEP}${__disp_str}"
     done
     return "$code"
 }

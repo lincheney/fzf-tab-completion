@@ -71,8 +71,8 @@ _fzf_completion_selector() {
 
     tput cud1 >/dev/tty # fzf clears the line on exit so move down one
     cat <(printf %s\\n "$first" "$second") - | \
-        FZF_DEFAULT_OPTS="--height ${FZF_TMUX_HEIGHT:-40%} --reverse $FZF_DEFAULT_OPTS $FZF_COMPLETION_OPTS" \
-            fzf --prompt "> $PREFIX" -d "$_FZF_COMPLETION_SEP" --with-nth 3..4 --nth 2 --preview-window=down:1 --preview='echo -n {5}; echo'
+        FZF_DEFAULT_OPTS="--height ${FZF_TMUX_HEIGHT:-40%} --reverse --preview-window=down:1 $FZF_DEFAULT_OPTS $FZF_COMPLETION_OPTS" \
+            fzf --prompt "> $PREFIX" -d "$_FZF_COMPLETION_SEP" --with-nth 3..4 --nth 2 --preview='echo -n {5}'
     code="$?"
     tput cuu1 >/dev/tty
     return "$code"

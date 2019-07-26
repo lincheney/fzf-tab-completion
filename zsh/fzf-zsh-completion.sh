@@ -59,8 +59,7 @@ fzf_completion() {
             eval "${(j.;.)__compadd_args:-true} --"
             ;;
     esac
-    tput cuu "$(( BUFFERLINES ))" # move back up
-    zle -I
+    zle -R ' '
 }
 
 _fzf_completion_selector() {

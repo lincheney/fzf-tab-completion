@@ -4,7 +4,7 @@ _FZF_COMPLETION_SEP=$'\x7f'
 _FZF_COMPLETION_FLAGS=( a k f q Q e n U l o 1 2 C )
 
 fzf_completion() {
-    local value code
+    local value code stderr
     local __compadd_args=()
 
     eval "$(
@@ -33,7 +33,9 @@ fzf_completion() {
         value="$(
             (
                 local __comp_index=0
-                _main_complete || true
+                exec {stdout}>&1
+                stderr="$(_main_complete 2>&1 1>&"${stdout}")" || true
+                printf 'stderr=%q\n' "$stderr" >&"${__evaled}"
             ) | awk -F"$_FZF_COMPLETION_SEP" '$2!="" && !x[$2]++' | _fzf_completion_selector
         )"
         code="$?"
@@ -59,7 +61,12 @@ fzf_completion() {
             eval "${(j.;.)__compadd_args:-true} --"
             ;;
     esac
-    zle -R ' '
+
+    if [ -n "$stderr" ]; then
+        zle -M "$stderr"
+    else
+        zle -R ' '
+    fi
 }
 
 _fzf_completion_selector() {

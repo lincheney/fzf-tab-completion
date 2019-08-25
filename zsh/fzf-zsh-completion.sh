@@ -7,6 +7,10 @@ fzf_completion() {
     local value code stderr
     local __compadd_args=()
 
+    if zstyle -t ':completion:' show-completer; then
+        zle -R 'Loading matches ...'
+    fi
+
     eval "$(
         # set -o pipefail
         # hacks
@@ -59,6 +63,9 @@ fzf_completion() {
         1)
             # run all compadds with no matches, in case any messages to display
             eval "${(j.;.)__compadd_args:-true} --"
+            if [ "${#__compadd_args[@]}" = 0 ] && zstyle -s :completion:::::warnings format msg; then
+                compadd -x "$msg"
+            fi
             ;;
     esac
 

@@ -41,12 +41,11 @@ fzf_completion() {
                 stderr="$(_main_complete 2>&1 1>&"${stdout}")" || true
                 printf 'stderr=%q\n' "$stderr" >&"${__evaled}"
             ) | awk -F"$_FZF_COMPLETION_SEP" '$2!="" && !x[$2]++' | _fzf_completion_selector
+            printf 'code=%q\n' "$?" >&"${__evaled}"
         )"
-        code="$?"
         exec {__evaled}>&-
 
         printf 'value=%q\n' "$value"
-        printf 'code=%q\n' "$code"
     )"
 
     case "$code" in

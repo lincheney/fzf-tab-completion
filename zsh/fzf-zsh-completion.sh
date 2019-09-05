@@ -109,7 +109,7 @@ _fzf_completion_compadd() {
         __disp=( "${(@P)__disp[2]}" )
     fi
 
-    builtin compadd -A __hits -D __disp "${__flags[@]}" "${__opts[@]}" "$@"
+    builtin compadd -Q -A __hits -D __disp "${__flags[@]}" "${__opts[@]}" "$@"
     local code="$?"
     __flags="${(j..)__flags//[ak-]}"
     printf '__compadd_args+=( %q )\n' "$(printf '%q ' PREFIX="$PREFIX" IPREFIX="$IPREFIX" SUFFIX="$SUFFIX" ISUFFIX="$ISUFFIX" compadd ${__flags:+-$__flags} "${__opts[@]}")" >&"${__evaled}"

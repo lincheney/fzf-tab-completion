@@ -86,8 +86,8 @@ _fzf_completion_selector() {
 
     tput cud1 >/dev/tty # fzf clears the line on exit so move down one
     cat <(printf %s\\n "$first" "$second") - | \
-        FZF_DEFAULT_OPTS="--height ${FZF_TMUX_HEIGHT:-40%} --reverse --preview-window=down:1 $FZF_DEFAULT_OPTS $FZF_COMPLETION_OPTS" \
-            fzf --prompt "> $PREFIX" -d "$_FZF_COMPLETION_SEP" --with-nth 3..4 --nth 2 --preview='echo -n {5}'
+        FZF_DEFAULT_OPTS="--height ${FZF_TMUX_HEIGHT:-40%} --reverse $FZF_DEFAULT_OPTS $FZF_COMPLETION_OPTS" \
+            fzf --ansi --prompt "> $PREFIX" -d "$_FZF_COMPLETION_SEP" --with-nth 3..5 --nth 2
     code="$?"
     tput cuu1 >/dev/tty
     return "$code"
@@ -126,6 +126,11 @@ _fzf_completion_compadd() {
         # display strings not handled for now
         __disp_str="${__disp[$i]:-}"
         __show_str="${(Q)__hit_str}"
+
+        if [[ "$__disp_str" == "$__hit_str"* ]]; then
+            __disp_str="${__disp_str:${#__hit_str}}"
+        fi
+        __disp_str=$'\x1b[37m'"$__disp_str"$'\x1b[0m'
 
         if [ -n "$__filenames" -a "$__show_str" = "$__hit_str" -a -d "${prefix}/$__hit_str" ]; then
             __show_str+=/

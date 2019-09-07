@@ -23,9 +23,10 @@ fzf_completion() {
             functions[_approximate]="unfunction compadd; { ${functions[_approximate]//builtin compadd /_fzf_completion_compadd } } always { override_compadd }"
         }
 
-        if [[ "$functions[approximate]" == 'builtin autoload'* ]]; then
+        if [[ "$functions[_approximate]" == 'builtin autoload'* ]]; then
             _approximate() {
-                builtin autoload +X _approximate
+                unfunction _approximate
+                builtin autoload +XU _approximate
                 override_approximate
                 _approximate "$@"
             }

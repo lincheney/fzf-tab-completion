@@ -33,6 +33,9 @@ fzf_completion() {
             override_approximate
         fi
 
+        # do not allow grouping, it stuffs up display strings
+        zstyle ":completion:*:*" list-grouped no
+
         exec {__evaled}>&1
         value="$(
             (

@@ -138,6 +138,9 @@ _fzf_completion_compadd() {
         if [[ "$__disp_str" == "$__hit_str"* ]]; then
             __disp_str="${__disp_str:${#__hit_str}}"
         fi
+        if [[ "$__disp_str" =~ '^\S' ]]; then
+            __disp_str=$'\t'"$__disp_str"
+        fi
         __disp_str=$'\x1b[37m'"$__disp_str"$'\x1b[0m'
 
         if [ -n "$__filenames" -a "$__show_str" = "$__hit_str" -a -d "${prefix}/$__hit_str" ]; then

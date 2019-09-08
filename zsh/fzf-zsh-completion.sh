@@ -12,10 +12,7 @@ fzf_completion() {
     fi
 
     eval "$(
-        local __autoloads=()
-        for k v in "${(@kv)functions[@]}"; do
-            [[ "$v" == 'builtin autoload '* ]] && __autoloads+=( "$k" )
-        done
+        local autoloads="$(functions -u +)"
 
         # set -o pipefail
         # hacks
@@ -49,9 +46,7 @@ fzf_completion() {
                 exec {stdout}>&1
                 stderr="$(
                     _main_complete 2>&1 1>&"${stdout}"
-                    for k v in "${(@kv)functions[@]}"; do
-                        [[ "$v" != 'builtin autoload '* ]] && echo "$k"
-                    done | fgrep -x "${(F)__autoloads[@]}" | sed 's/^/builtin autoload +XUz /' >&"${__evaled}"
+                    echo "$autoloads" | fgrep -xv "$(functions -u +)" | sed 's/^/builtin autoload +XUz /' >&"${__evaled}"
                 )"
                 printf 'stderr=%q\n' "$stderr" >&"${__evaled}"
 

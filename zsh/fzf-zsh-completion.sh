@@ -12,6 +12,11 @@ fzf_completion() {
     fi
 
     eval "$(
+        local __autoloads=()
+        for k v in "${(@kv)functions[@]}"; do
+            [[ "$v" == 'builtin autoload '* ]] && __autoloads+=( "$k" )
+        done
+
         # set -o pipefail
         # hacks
         override_compadd() { compadd() { _fzf_completion_compadd "$@"; }; }
@@ -40,10 +45,16 @@ fzf_completion() {
         exec {__evaled}>&1
         value="$(
             (
-                local __comp_index=0
+                local __comp_index=0 __autoloaded=()
                 exec {stdout}>&1
-                stderr="$(_main_complete 2>&1 1>&"${stdout}")" || true
+                stderr="$(
+                    _main_complete 2>&1 1>&"${stdout}"
+                    for k v in "${(@kv)functions[@]}"; do
+                        [[ "$v" != 'builtin autoload '* ]] && echo "$k"
+                    done | fgrep -x "${(F)__autoloads[@]}" | sed 's/^/builtin autoload +XUz /' >&"${__evaled}"
+                )"
                 printf 'stderr=%q\n' "$stderr" >&"${__evaled}"
+
             ) | awk -F"$_FZF_COMPLETION_SEP" '$2!="" && !x[$2]++' | _fzf_completion_selector
             printf 'code=%q\n' "$?" >&"${__evaled}"
         )"

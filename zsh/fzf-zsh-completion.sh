@@ -12,8 +12,6 @@ fzf_completion() {
     fi
 
     eval "$(
-        local autoloads="$(functions -u +)"
-
         # set -o pipefail
         # hacks
         override_compadd() { compadd() { _fzf_completion_compadd "$@"; }; }
@@ -28,13 +26,16 @@ fzf_completion() {
         if [[ "$functions[_approximate]" == 'builtin autoload'* ]]; then
             _approximate() {
                 unfunction _approximate
-                builtin autoload +XU _approximate
+                echo builtin autoload +XUz _approximate >&"${__evaled}"
+                builtin autoload +XUz _approximate
                 override_approximate
                 _approximate "$@"
             }
         else
             override_approximate
         fi
+
+        local autoloads="$(functions -u +)"
 
         # do not allow grouping, it stuffs up display strings
         zstyle ":completion:*:*" list-grouped no

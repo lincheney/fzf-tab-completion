@@ -11,7 +11,9 @@ fzf_completion() {
         zle -R 'Loading matches ...'
     fi
 
-    eval "$(
+    while read -r; do
+        eval "$REPLY"
+    done < <(
         # set -o pipefail
         # hacks
         override_compadd() { compadd() { _fzf_completion_compadd "$@"; }; }
@@ -41,23 +43,21 @@ fzf_completion() {
         zstyle ":completion:*:*" list-grouped no
 
         exec {__evaled}>&1
-        value="$(
+        coproc (
             (
                 local __comp_index=0 __autoloaded=()
-                exec {stdout}>&1
+                exec {__stdout}>&1
                 stderr="$(
-                    _main_complete 2>&1 1>&"${stdout}"
-                    echo "$autoloads" | fgrep -xv "$(functions -u +)" | sed 's/^/builtin autoload +XUz /' >&"${__evaled}"
+                    _main_complete 2>&1 1>&"${__stdout}"
+                    <<<"$autoloads" fgrep -xv "$(functions -u +)" | sed 's/^/builtin autoload +XUz /' >&"${__evaled}"
                 )"
-                printf 'stderr=%q\n' "$stderr" >&"${__evaled}"
-
-            ) | awk -F"$_FZF_COMPLETION_SEP" '$2!="" && !x[$2]++' | _fzf_completion_selector
-            printf 'code=%q\n' "$?" >&"${__evaled}"
-        )"
-        exec {__evaled}>&-
-
-        printf 'value=%q\n' "$value"
-    )"
+                echo "stderr=${(q)stderr}" >&"${__evaled}"
+            ) | awk -F"$_FZF_COMPLETION_SEP" '$2!="" && !x[$2]++'
+        )
+        value="$(_fzf_completion_selector <&p)"
+        echo "code=$?; value=${(q)value}"
+        echo break
+    )
 
     case "$code" in
         0)
@@ -73,7 +73,7 @@ fzf_completion() {
         1)
             # run all compadds with no matches, in case any messages to display
             eval "${(j.;.)__compadd_args:-true} --"
-            if [ "${#__compadd_args[@]}" = 0 ] && zstyle -s :completion:::::warnings format msg; then
+            if (( ! ${#__compadd_args[@]} )) && zstyle -s :completion:::::warnings format msg; then
                 compadd -x "$msg"
             fi
             ;;
@@ -89,13 +89,13 @@ fzf_completion() {
 _fzf_completion_selector() {
     read -r first || return 1 # no input
     if ! read -r second; then
-        printf %s "$first" && return # only one input
+        echo "$first" && return # only one input
     fi
 
     tput cud1 >/dev/tty # fzf clears the line on exit so move down one
-    cat <(printf %s\\n "$first" "$second") - | \
-        FZF_DEFAULT_OPTS="--height ${FZF_TMUX_HEIGHT:-40%} --reverse $FZF_DEFAULT_OPTS $FZF_COMPLETION_OPTS" \
-            fzf --ansi --prompt "> $PREFIX" -d "$_FZF_COMPLETION_SEP" --with-nth 3..5 --nth 2
+    FZF_DEFAULT_OPTS="--height ${FZF_TMUX_HEIGHT:-40%} --reverse $FZF_DEFAULT_OPTS $FZF_COMPLETION_OPTS" \
+        fzf --ansi --prompt "> $PREFIX" -d "$_FZF_COMPLETION_SEP" --with-nth 3..5 --nth 2 \
+        < <(echo "$first"; echo "$second"; cat)
     code="$?"
     tput cuu1 >/dev/tty
     return "$code"
@@ -147,7 +147,7 @@ _fzf_completion_compadd() {
             __show_str+=/
         fi
         if [[ "$__show_str" =~ '[^ -~]' ]]; then
-            printf -v __show_str %q "$__show_str"
+            __show_str="${(q)__show_str}"
         fi
 
         if [[ "$__show_str" == "$PREFIX"* ]]; then
@@ -157,7 +157,7 @@ _fzf_completion_compadd() {
         fi
 
         # index, value, prefix, show, display
-        printf %s\\n "${__comp_index}${_FZF_COMPLETION_SEP}${(q)__hit_str}${_FZF_COMPLETION_SEP}${__show_str}${_FZF_COMPLETION_SEP}${__disp_str}"
+        echo "${__comp_index}${_FZF_COMPLETION_SEP}${(q)__hit_str}${_FZF_COMPLETION_SEP}${__show_str}${_FZF_COMPLETION_SEP}${__disp_str}"
     done
     return "$code"
 }

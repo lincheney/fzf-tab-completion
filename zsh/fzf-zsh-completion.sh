@@ -11,9 +11,7 @@ fzf_completion() {
         zle -R 'Loading matches ...'
     fi
 
-    while read -r; do
-        eval "$REPLY"
-    done < <(
+    eval "$(
         # set -o pipefail
         # hacks
         override_compadd() { compadd() { _fzf_completion_compadd "$@"; }; }
@@ -42,6 +40,7 @@ fzf_completion() {
         # do not allow grouping, it stuffs up display strings
         zstyle ":completion:*:*" list-grouped no
 
+        set -o monitor +o notify
         exec {__evaled}>&1
         coproc (
             (
@@ -54,10 +53,13 @@ fzf_completion() {
                 echo "stderr=${(q)stderr}" >&"${__evaled}"
             ) | awk -F"$_FZF_COMPLETION_SEP" '$2!="" && !x[$2]++ { print $0; system("") }'
         )
+        coproc_pid="$!"
         value="$(_fzf_completion_selector <&p)"
-        echo "code=$?; value=${(q)value}"
-        echo break
-    )
+        code="$?"
+        kill -- -"$coproc_pid" 2>/dev/null && wait "$coproc_pid"
+
+        echo "code=$code; value=${(q)value}"
+    )"
 
     case "$code" in
         0)

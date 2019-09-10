@@ -215,33 +215,29 @@ fzf_bash_completer() {
     # preload completions in top shell
     { complete -p "$1" || __load_completion "$1"; } &>/dev/null
 
-    while read -r; do
-        eval "$REPLY"
-    done < <(
+    eval "$(
         set -o pipefail
 
         # hack: hijack compopt
         compopt() { _fzf_bash_completion_compopt "$@"; }
 
+        local __unquoted="${2#[\"\']}"
         exec {__evaled}>&1
-        value="$(
-            local __unquoted="${2#[\"\']}"
-            _fzf_bash_completion_selector "$1" "$__unquoted" "$3" < <(
-                (
+        coproc (
+            (
+                _fzf_bash_completion_get_results "$@"
+                while (( $? == 124 )); do
                     _fzf_bash_completion_get_results "$@"
-                    while (( $? == 124 )); do
-                        _fzf_bash_completion_get_results "$@"
-                    done
-                ) | _fzf_bash_completion_unbuffered_awk '$0!="" && !x[$0]++' 'sub(find, replace)' -vfind="^.{${#__unquoted}}" -vreplace="&$_FZF_COMPLETION_SEP"
-            )
-        )"
+                done
+            ) | _fzf_bash_completion_unbuffered_awk '$0!="" && !x[$0]++' 'sub(find, replace)' -vfind="^.{${#__unquoted}}" -vreplace="&$_FZF_COMPLETION_SEP"
+        )
+        value="$(_fzf_bash_completion_selector "$1" "$__unquoted" "$3" <&"${COPROC[0]}")"
         code="$?"
-        exec {__evaled}>&-
 
         printf 'COMPREPLY=%q\n' "$value"
         printf 'code=%q\n' "$code"
-        echo break
-    )
+        kill 0
+    )"
 
     if [ "$code" = 0 ]; then
         readarray -t COMPREPLY < <(

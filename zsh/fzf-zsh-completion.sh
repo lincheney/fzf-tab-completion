@@ -52,7 +52,7 @@ fzf_completion() {
                     <<<"$autoloads" fgrep -xv "$(functions -u +)" | sed 's/^/builtin autoload +XUz /' >&"${__evaled}"
                 )"
                 echo "stderr=${(q)stderr}" >&"${__evaled}"
-            ) | awk -F"$_FZF_COMPLETION_SEP" '$2!="" && !x[$2]++'
+            ) | awk -F"$_FZF_COMPLETION_SEP" '$2!="" && !x[$2]++ { print $0; system("") }'
         )
         value="$(_fzf_completion_selector <&p)"
         echo "code=$?; value=${(q)value}"

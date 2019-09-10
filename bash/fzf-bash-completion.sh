@@ -11,6 +11,10 @@ _fzf_bash_completion_shell_split() {
     "$_fzf_bash_completion_egrep" -o -e ';|\(|\)|\{|\}' -e "(\\\\.|[^\"'[:space:];(){}])+" -e "\\\$'(\\\\.|[^'])*('|$)" -e "'[^']*('|$)" -e "\"(\\\\.|\\\$(\$|[^(])|[^\"\$])*(\"|\$)" -e '".*' -e .
 }
 
+_fzf_unbuffered_awk() {
+    awk "${@:3}" "$1 { $2; print \$0; system(\"\") }"
+}
+
 _fzf_bash_completion_flatten_subshells() {
     (
         local count=0 buffer=
@@ -140,8 +144,7 @@ fzf_bash_completion() {
 }
 
 _fzf_bash_completion_selector() {
-    sed -r "s/^.{${#2}}/&$_FZF_COMPLETION_SEP/" \
-    | FZF_DEFAULT_OPTS="--height ${FZF_TMUX_HEIGHT:-40%} --reverse $FZF_DEFAULT_OPTS $FZF_COMPLETION_OPTS" \
+    FZF_DEFAULT_OPTS="--height ${FZF_TMUX_HEIGHT:-40%} --reverse $FZF_DEFAULT_OPTS $FZF_COMPLETION_OPTS" \
         fzf -1 -0 --prompt "> $line" --nth 2 -d "$_FZF_COMPLETION_SEP" \
     | tr -d "$_FZF_COMPLETION_SEP"
 }
@@ -212,7 +215,9 @@ fzf_bash_completer() {
     # preload completions in top shell
     { complete -p "$1" || __load_completion "$1"; } &>/dev/null
 
-    eval "$(
+    while read -r; do
+        eval "$REPLY"
+    done < <(
         set -o pipefail
 
         # hack: hijack compopt
@@ -220,19 +225,23 @@ fzf_bash_completer() {
 
         exec {__evaled}>&1
         value="$(
-            (
-                _fzf_bash_completion_get_results "$@"
-                while [ "$?" = 124 ]; do
+            local __unquoted="${2#[\"\']}"
+            _fzf_bash_completion_selector "$1" "$__unquoted" "$3" < <(
+                (
                     _fzf_bash_completion_get_results "$@"
-                done
-            ) | awk '!x[$0]++' | _fzf_bash_completion_selector "$1" "${2#[\"\']}" "$3"
+                    while (( $? == 124 )); do
+                        _fzf_bash_completion_get_results "$@"
+                    done
+                ) | _fzf_unbuffered_awk '$0!="" && !x[$0]++' 'sub(find, replace)' -vfind="^.{${#__unquoted}}" -vreplace="&$_FZF_COMPLETION_SEP"
+            )
         )"
         code="$?"
         exec {__evaled}>&-
 
         printf 'COMPREPLY=%q\n' "$value"
         printf 'code=%q\n' "$code"
-    )"
+        echo break
+    )
 
     if [ "$code" = 0 ]; then
         readarray -t COMPREPLY < <(
@@ -350,7 +359,7 @@ _fzf_bash_completion_complete() {
 
             echo
         ) | _fzf_bash_completion_apply_xfilter "$compl_xfilter" \
-          | sed "s/.*/${compl_prefix}&${compl_suffix}/; /./!d" \
+          | _fzf_unbuffered_awk '$0!=""' 'sub(find, replace)' -vfind='.*' -vreplace="${compl_prefix}&${compl_suffix}" \
           | if read -r line; then
                 echo "$line"; cat
             else
@@ -367,17 +376,17 @@ _fzf_bash_completion_complete() {
             compgen -o dirnames -- "$2"
         fi
     ) \
-    | sed "s/^$(_fzf_bash_completion_sed_escape "$2")/$(_fzf_bash_completion_sed_escape "$(sed -r 's/\\(.)/\1/g' <<<"$2")")/" \
+    | _fzf_unbuffered_awk '' 'sub(find, replace)' -vfind="^$(_fzf_bash_completion_sed_escape "$2")" -vreplace="$(_fzf_bash_completion_sed_escape "$(sed -r 's/\\(.)/\1/g' <<<"$2")")" \
     | "$dir_marker"
 }
 
 _fzf_bash_completion_apply_xfilter() {
     local pattern line
     if [ "${1::1}" = ! ]; then
-        pattern="$(sed -r 's/((^|[^\])(\\\\)*)&/\1x/g' <<<"${1:1}")"
+        pattern="$(sed 's/\(\(^\|[^\]\)\(\\\\\)*\)&/\1x/g' <<<"${1:1}")"
         while IFS= read -r line; do [[ "$line" != $pattern ]] && echo "$line"; done
     elif [ -n "$1" ]; then
-        pattern="$(sed -r 's/((^|[^\])(\\\\)*)&/\1x/g' <<<"$1")"
+        pattern="$(sed 's/\(\(^\|[^\]\)\(\\\\\)*\)&/\1x/g' <<<"$1")"
         while IFS= read -r line; do [[ "$line" == $pattern ]] && echo "$line"; done
     else
         cat

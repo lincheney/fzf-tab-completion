@@ -155,7 +155,7 @@ _fzf_bash_completion_expand_alias() {
         if [ -n "${value[*]}" -a "${value[0]}" != "$1" ]; then
             COMP_WORDS=( "${value[@]}" "${COMP_WORDS[@]:1}" )
             COMP_CWORD="$(( COMP_CWORD + ${#value[@]} - 1 ))"
-            COMP_LINE="$(<<<"$COMP_LINE" awk '' '' -vfind="$(_fzf_bash_completion_awk_escape "$1")" -vreplace="$(_fzf_bash_completion_awk_escape "${BASH_ALIASES[$1]}")")"
+            COMP_LINE="$(<<<"$COMP_LINE" awk '' 'sub(find, replace)' -vfind="$(_fzf_bash_completion_awk_escape "$1")" -vreplace="$(_fzf_bash_completion_awk_escape "${BASH_ALIASES[$1]}")")"
             COMP_POINT="$(( COMP_POINT + ${#BASH_ALIASES[$1]} - ${#1} ))"
         fi
     fi

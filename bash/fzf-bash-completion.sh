@@ -1,7 +1,7 @@
 _FZF_COMPLETION_SEP=$'\x7f'
 
-_fzf_bash_completion_sed_escape() {
-    sed 's/[.[\*^$\/]/\\&/g' <<<"$1"
+_fzf_bash_completion_awk_escape() {
+    sed 's/[[\*^$]/\\&/g' <<<"$1"
 }
 
 # shell parsing stuff
@@ -11,7 +11,7 @@ _fzf_bash_completion_shell_split() {
     "$_fzf_bash_completion_egrep" -o -e ';|\(|\)|\{|\}' -e "(\\\\.|[^\"'[:space:];(){}])+" -e "\\\$'(\\\\.|[^'])*('|$)" -e "'[^']*('|$)" -e "\"(\\\\.|\\\$(\$|[^(])|[^\"\$])*(\"|\$)" -e '".*' -e .
 }
 
-_fzf_unbuffered_awk() {
+_fzf_bash_completion_unbuffered_awk() {
     awk "${@:3}" "$1 { $2; print \$0; system(\"\") }"
 }
 
@@ -155,7 +155,7 @@ _fzf_bash_completion_expand_alias() {
         if [ -n "${value[*]}" -a "${value[0]}" != "$1" ]; then
             COMP_WORDS=( "${value[@]}" "${COMP_WORDS[@]:1}" )
             COMP_CWORD="$(( COMP_CWORD + ${#value[@]} - 1 ))"
-            COMP_LINE="$(<<<"$COMP_LINE" sed "s/^$(_fzf_bash_completion_sed_escape "$1")/$(_fzf_bash_completion_sed_escape "${BASH_ALIASES[$1]}")/")"
+            COMP_LINE="$(<<<"$COMP_LINE" awk '' '' -vfind="$(_fzf_bash_completion_awk_escape "$1")" -vreplace="$(_fzf_bash_completion_awk_escape "${BASH_ALIASES[$1]}")")"
             COMP_POINT="$(( COMP_POINT + ${#BASH_ALIASES[$1]} - ${#1} ))"
         fi
     fi
@@ -232,7 +232,7 @@ fzf_bash_completer() {
                     while (( $? == 124 )); do
                         _fzf_bash_completion_get_results "$@"
                     done
-                ) | _fzf_unbuffered_awk '$0!="" && !x[$0]++' 'sub(find, replace)' -vfind="^.{${#__unquoted}}" -vreplace="&$_FZF_COMPLETION_SEP"
+                ) | _fzf_bash_completion_unbuffered_awk '$0!="" && !x[$0]++' 'sub(find, replace)' -vfind="^.{${#__unquoted}}" -vreplace="&$_FZF_COMPLETION_SEP"
             )
         )"
         code="$?"
@@ -298,10 +298,10 @@ _fzf_bash_completion_complete() {
             local compgen_opts+=( "$1" "$2" )
             shift ;;
         -P)
-            local compl_prefix="$(_fzf_bash_completion_sed_escape "$2")"
+            local compl_prefix="$(_fzf_bash_completion_awk_escape "$2")"
             shift ;;
         -S)
-            local compl_suffix="$(_fzf_bash_completion_sed_escape "$2")"
+            local compl_suffix="$(_fzf_bash_completion_awk_escape "$2")"
             shift ;;
         -[a-z])
             compgen_actions+=( "$1" )
@@ -359,7 +359,7 @@ _fzf_bash_completion_complete() {
 
             echo
         ) | _fzf_bash_completion_apply_xfilter "$compl_xfilter" \
-          | _fzf_unbuffered_awk '$0!=""' 'sub(find, replace)' -vfind='.*' -vreplace="${compl_prefix}&${compl_suffix}" \
+          | _fzf_bash_completion_unbuffered_awk '$0!=""' 'sub(find, replace)' -vfind='.*' -vreplace="${compl_prefix}&${compl_suffix}" \
           | if read -r line; then
                 echo "$line"; cat
             else
@@ -376,7 +376,7 @@ _fzf_bash_completion_complete() {
             compgen -o dirnames -- "$2"
         fi
     ) \
-    | _fzf_unbuffered_awk '' 'sub(find, replace)' -vfind="^$(_fzf_bash_completion_sed_escape "$2")" -vreplace="$(_fzf_bash_completion_sed_escape "$(sed -r 's/\\(.)/\1/g' <<<"$2")")" \
+    | _fzf_bash_completion_unbuffered_awk '' 'sub(find, replace)' -vfind="^$(_fzf_bash_completion_awk_escape "$2")" -vreplace="$(_fzf_bash_completion_awk_escape "$(sed -r 's/\\(.)/\1/g' <<<"$2")")" \
     | "$dir_marker"
 }
 

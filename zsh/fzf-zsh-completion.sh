@@ -133,7 +133,7 @@ _fzf_completion_compadd() {
 
     for ((i = 1; i <= $#__hits; i++)); do
         __hit_str="${__hits[$i]}"
-        __disp_str="${__disp[$i]:-}"
+        __disp_str="${__disp[$i]:-"${__hit_str}"}"
         __show_str=
 
         if [[ "$__disp_str" == "$__hit_str"* ]]; then

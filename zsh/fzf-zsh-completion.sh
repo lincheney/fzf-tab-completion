@@ -129,21 +129,22 @@ _fzf_completion_compadd() {
     (( __comp_index++ ))
 
     local prefix="${__optskv[-W]:-.}"
-    local __disp_str __hit_str
+    local __disp_str __hit_str __show_str
 
     for ((i = 1; i <= $#__hits; i++)); do
         __hit_str="${__hits[$i]}"
-        # display strings not handled for now
         __disp_str="${__disp[$i]:-}"
-        __show_str="${(Q)__hit_str}"
+        __show_str=
 
         if [[ "$__disp_str" == "$__hit_str"* ]]; then
+            __show_str="${(Q)__hit_str}"
             __disp_str="${__disp_str:${#__hit_str}}"
+
+            if [[ "$__disp_str" =~ '^\S' ]]; then
+                __disp_str=$'\t'"$__disp_str"
+            fi
+            __disp_str=$'\x1b[37m'"$__disp_str"$'\x1b[0m'
         fi
-        if [[ "$__disp_str" =~ '^\S' ]]; then
-            __disp_str=$'\t'"$__disp_str"
-        fi
-        __disp_str=$'\x1b[37m'"$__disp_str"$'\x1b[0m'
 
         if [ -n "$__filenames" -a "$__show_str" = "$__hit_str" -a -d "${prefix}/$__hit_str" ]; then
             __show_str+=/

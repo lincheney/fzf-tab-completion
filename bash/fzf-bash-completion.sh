@@ -350,8 +350,11 @@ _fzf_bash_completion_complete() {
             fi
 
             if [ -n "$compl_command" ]; then
-                COMP_LINE="$COMP_LINE" COMP_POINT="$COMP_POINT" COMP_KEY="$COMP_KEY" COMP_TYPE="$COMP_TYPE" \
-                    bash -c "$compl_command \$@" -- "$@"
+                (
+                    unset COMP_WORDS COMP_CWORD
+                    export COMP_LINE="$COMP_LINE" COMP_POINT="$COMP_POINT" COMP_KEY="$COMP_KEY" COMP_TYPE="$COMP_TYPE"
+                    $compl_command "$@"
+                )
             fi
 
             echo

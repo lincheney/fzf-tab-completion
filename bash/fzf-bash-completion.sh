@@ -268,7 +268,8 @@ _fzf_bash_completion_complete() {
     local compgen_actions=()
     local compspec="$(complete -p "$1" 2>/dev/null || complete -p '')"
 
-    set -- $compspec "$@"
+    eval "compspec=( $compspec )"
+    set -- "${compspec[@]}" "$@"
     shift
     while [ "$#" -gt 4 ]; do
         case "$1" in
@@ -350,7 +351,7 @@ _fzf_bash_completion_complete() {
 
             if [ -n "$compl_command" ]; then
                 COMP_LINE="$COMP_LINE" COMP_POINT="$COMP_POINT" COMP_KEY="$COMP_KEY" COMP_TYPE="$COMP_TYPE" \
-                    $compl_command "$@"
+                    bash -c "$compl_command \$@" -- "$@"
             fi
 
             echo

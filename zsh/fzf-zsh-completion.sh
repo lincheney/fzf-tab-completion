@@ -3,6 +3,9 @@
 _FZF_COMPLETION_SEP=$'\x7f'
 _FZF_COMPLETION_FLAGS=( a k f q Q e n U l o 1 2 C )
 
+zmodload zsh/zselect
+zmodload zsh/system
+
 fzf_completion() {
     local value code stderr
     local __compadd_args=()
@@ -89,15 +92,28 @@ fzf_completion() {
 }
 
 _fzf_completion_selector() {
-    read -r first || return 1 # no input
-    if ! read -r second; then
-        echo "$first" && return # only one input
-    fi
+    local lines=() reply REPLY
+    exec {tty}</dev/tty
+    while (( ${#lines[@]} < 2 )); do
+        zselect -r 0 "$tty"
+        if (( reply[2] == 0 )); then
+            if read -r; then
+                lines+=( "$REPLY" )
+            elif (( ${#lines[@]} == 1 )); then # only one input
+                echo "${lines[1]}" && return
+            else # no input
+                return 1
+            fi
+        else
+            sysread -c 5 -t0.05 <&"$tty"
+            [ "$REPLY" = $'\x1b' ] && return 130 # escape pressed
+        fi
+    done
 
     tput cud1 >/dev/tty # fzf clears the line on exit so move down one
     FZF_DEFAULT_OPTS="--height ${FZF_TMUX_HEIGHT:-40%} --reverse $FZF_DEFAULT_OPTS $FZF_COMPLETION_OPTS" \
         fzf --ansi --prompt "> $PREFIX" -d "$_FZF_COMPLETION_SEP" --with-nth 3..5 --nth 2 \
-        < <(echo "$first"; echo "$second"; cat)
+        < <(printf %s\\n "${lines[@]}"; cat)
     code="$?"
     tput cuu1 >/dev/tty
     return "$code"

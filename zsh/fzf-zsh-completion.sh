@@ -62,7 +62,7 @@ fzf_completion() {
         kill -- -"$coproc_pid" 2>/dev/null && wait "$coproc_pid"
 
         echo "code=$code; value=${(q)value}"
-    )"
+    )" 2>/dev/null
 
     case "$code" in
         0)

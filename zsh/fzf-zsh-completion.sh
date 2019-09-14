@@ -80,6 +80,8 @@ fzf_completion() {
             eval "${(j.;.)__compadd_args:-true} --"
             if (( ! ${#__compadd_args[@]} )) && zstyle -s :completion:::::warnings format msg; then
                 compadd -x "$msg"
+                compadd -x "$stderr"
+                stderr=
             fi
             ;;
     esac

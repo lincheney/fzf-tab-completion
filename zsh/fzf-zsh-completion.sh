@@ -63,7 +63,7 @@ fzf_completion() {
         code="$?"
         kill -- -"$coproc_pid" 2>/dev/null && wait "$coproc_pid"
 
-        echo "code=$code; value=${(q)value}"
+        printf 'code=%q; value=%q' "$code" "$value"
     )" 2>/dev/null
 
     case "$code" in

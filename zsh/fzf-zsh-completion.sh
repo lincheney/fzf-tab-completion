@@ -7,6 +7,8 @@ zmodload zsh/zselect
 zmodload zsh/system
 
 fzf_completion() {
+    emulate -LR zsh
+    setopt interactivecomments
     local value code stderr
     local __compadd_args=()
 

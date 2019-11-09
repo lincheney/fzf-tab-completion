@@ -89,7 +89,7 @@ fzf_completion() {
     esac
 
     if [ -n "$stderr" ]; then
-        zle -M "$stderr"
+        zle -M -- "$stderr"
     else
         zle -R ' '
     fi

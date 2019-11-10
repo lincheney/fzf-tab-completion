@@ -52,7 +52,6 @@ impl Iterator for CArray {
         if self.0.is_null() { return None }
         if unsafe{ *(self.0) }.is_null() { return None }
         let value = unsafe{ &**self.0 };
-        // let value = unsafe{ CStr::from_ptr(&**self.ptr) }.to_bytes();
         self.0 = unsafe{ self.0.offset(1) };
         Some(value)
     }
@@ -73,21 +72,22 @@ mod readline {
     }
 
     pub fn get_readline_name() -> Option<&'static str> {
-        if lib::rl_readline_name.is_null() {
-            None
-        } else {
-            unsafe{ CStr::from_ptr(lib::rl_readline_name.ptr()) }.to_str().ok()
+        unsafe {
+            let name = (*lib::rl_readline_name.ptr()).ptr();
+            if name.is_null() {
+                None
+            } else {
+                CStr::from_ptr(name).to_str().ok()
+            }
         }
     }
 
     pub fn hijack_completion(ignore: isize, key: isize, new_function: lib::rl_completion_func_t) -> isize {
         unsafe {
-            original_rl_attempted_completion_function = Some(*lib::rl_attempted_completion_function.ptr());
-            lib::rl_attempted_completion_function.set(new_function);
+            original_rl_attempted_completion_function = *lib::rl_attempted_completion_function.ptr();
+            lib::rl_attempted_completion_function.set(Some(new_function));
             let value = lib::rl_complete(ignore, key);
-            if let Some(func) = original_rl_attempted_completion_function.take() {
-                lib::rl_attempted_completion_function.set(func);
-            }
+            lib::rl_attempted_completion_function.set(original_rl_attempted_completion_function);
             value
         }
     }
@@ -121,11 +121,8 @@ mod readline {
             };
 
             if matches.is_null() {
-                let func = if lib::rl_completion_entry_function.is_null() {
-                    *lib::rl_filename_completion_function as _
-                } else {
-                    *lib::rl_completion_entry_function.ptr()
-                };
+                let func = (*lib::rl_completion_entry_function.ptr())
+                    .unwrap_or(*lib::rl_filename_completion_function);
                 lib::rl_completion_matches(text, func)
             } else {
                 matches
@@ -141,11 +138,11 @@ mod readline {
     }
 
     pub fn ignore_completion_duplicates() -> bool {
-        *lib::rl_ignore_completion_duplicates > 0
+        unsafe{ *lib::rl_ignore_completion_duplicates.ptr() > 0 }
     }
 
     pub fn filename_completion_desired() -> bool {
-        *lib::rl_filename_completion_desired > 0
+        unsafe{ *lib::rl_filename_completion_desired.ptr() > 0 }
     }
 
     pub fn mark_directories() -> bool {
@@ -166,16 +163,22 @@ mod readline {
         pub type rl_completion_func_t = extern fn(*const i8, isize, isize) -> *const *const i8;
         pub type rl_compentry_func_t = unsafe extern fn(*const i8, isize) -> *const i8;
 
+        #[derive(Copy, Clone)]
         pub struct Pointer<T>(usize, PhantomData<T>);
         impl<T> Pointer<T> {
             pub fn new(ptr: *mut T)    -> Self { Self(ptr as _, PhantomData) }
-            pub fn is_null(&self)      -> bool { self.0 == 0 }
             pub fn ptr(&self)        -> *mut T { self.0 as *mut T }
             pub unsafe fn set(&self, value: T) { *self.ptr() = value; }
         }
 
         lazy_static! {
-            static ref libreadline: Pointer<libc::c_void> = Pointer::new(unsafe{ dlopen!(b"libreadline.so\0") }.unwrap());
+            pub static ref libreadline: Pointer<libc::c_void> = Pointer::new(unsafe {
+                if dlsym!(libc::RTLD_DEFAULT, "rl_initialize", usize).is_ok() {
+                    libc::RTLD_DEFAULT
+                } else {
+                    dlopen!(b"libreadline.so\0").unwrap()
+                }
+            });
         }
         macro_rules! readline_lookup {
             ($name:ident: $type:ty) => {
@@ -186,15 +189,14 @@ mod readline {
         readline_lookup!(rl_refresh_line:                  unsafe extern fn(isize, isize) -> isize);
         readline_lookup!(rl_completion_matches:            unsafe extern fn(*const i8, rl_compentry_func_t) -> *const *const i8);
         readline_lookup!(rl_variable_value:                unsafe extern fn(*const i8) -> *const i8);
-        readline_lookup!(rl_readline_name:                 Pointer<i8>);
+        readline_lookup!(rl_readline_name:                 Pointer<Pointer<i8>>);
         readline_lookup!(tilde_expand:                     unsafe extern fn(*const i8) -> *const i8);
         readline_lookup!(rl_filename_completion_function:  rl_compentry_func_t);
+        readline_lookup!(rl_completion_entry_function:     Pointer<Option<rl_compentry_func_t>>);
         readline_lookup!(rl_complete:                      unsafe extern fn(isize, isize) -> isize);
-        readline_lookup!(rl_ignore_completion_duplicates:  isize);
-        readline_lookup!(rl_filename_completion_desired:   isize);
-
-        readline_lookup!(rl_attempted_completion_function: Pointer<rl_completion_func_t>);
-        readline_lookup!(rl_completion_entry_function:     Pointer<rl_compentry_func_t>);
+        readline_lookup!(rl_ignore_completion_duplicates:  Pointer<isize>);
+        readline_lookup!(rl_filename_completion_desired:   Pointer<isize>);
+        readline_lookup!(rl_attempted_completion_function: Pointer<Option<rl_completion_func_t>>);
     }
 }
 

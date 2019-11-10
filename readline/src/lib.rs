@@ -4,6 +4,7 @@ use std::io::{Write, BufReader, BufRead};
 use std::process::{Command, Stdio};
 use std::os::raw::c_char;
 use std::ffi::CStr;
+use std::fs::metadata;
 
 #[derive(Clone, Copy)]
 struct CArray {
@@ -37,9 +38,9 @@ mod readline {
     use std::os::raw::c_char;
 
     #[allow(non_camel_case_types)]
-    type rl_completion_func_t = extern fn(*const u8, isize, isize) -> *const *const u8;
+    type rl_completion_func_t = extern fn(*const c_char, isize, isize) -> *const *const c_char;
     #[allow(non_camel_case_types)]
-    type rl_compentry_func_t = unsafe extern fn(*const u8, isize) -> *const u8;
+    type rl_compentry_func_t = unsafe extern fn(*const c_char, isize) -> *const c_char;
 
     pub fn refresh_line() {
         unsafe{ rl_refresh_line(0, 0) };
@@ -60,14 +61,14 @@ mod readline {
         }
     }
 
-    pub fn vec_to_c_array(mut vec: Vec<String>) -> *const *const u8 {
+    pub fn vec_to_c_array(mut vec: Vec<String>) -> *const *const c_char {
         if vec.is_empty() {
             return ::std::ptr::null();
         }
         // make array of pointers
-        let mut array: Vec<*const u8> = vec.iter_mut().map(|s| {
+        let mut array: Vec<*const c_char> = vec.iter_mut().map(|s| {
             s.push('\0');
-            s.as_ptr()
+            s.as_ptr() as *const _
         }).collect();
         array.push(::std::ptr::null());
         array.shrink_to_fit();
@@ -83,7 +84,7 @@ mod readline {
     #[allow(non_upper_case_globals)]
     static mut original_rl_attempted_completion_function: Option<rl_completion_func_t> = None;
 
-    pub fn get_completions(text: *const u8, start: isize, end: isize) -> *const *const c_char {
+    pub fn get_completions(text: *const c_char, start: isize, end: isize) -> *const *const c_char {
         let matches = unsafe {
             let matches = if let Some(func) = original_rl_attempted_completion_function {
                 func(text, start, end)
@@ -115,21 +116,32 @@ mod readline {
         (unsafe{ rl_ignore_completion_duplicates }) > 0
     }
 
+    pub fn filename_completion_desired() -> bool {
+        (unsafe{ rl_filename_completion_desired }) > 0
+    }
+
+    pub fn complete_mark_directories() -> bool {
+        let value = unsafe{ rl_variable_value(b"mark-directories\0" as *const u8 as *const c_char) };
+        !value.is_null() && (unsafe{ CStr::from_ptr(value).to_bytes() }) == b"on"
+    }
+
     #[link(name = "readline")]
     extern {
         fn rl_refresh_line(count: isize, key: isize) -> isize;
-        fn rl_completion_matches(text: *const u8, func: rl_compentry_func_t) -> *const *const u8;
+        fn rl_completion_matches(text: *const c_char, func: rl_compentry_func_t) -> *const *const c_char;
+        fn rl_variable_value(name: *const c_char) -> *const c_char;
         static rl_readline_name: *const c_char;
         static mut rl_attempted_completion_function: Option<rl_completion_func_t>;
 
-        fn rl_completion_entry_function(text: *const u8, state: isize) -> *const u8;
-        fn rl_filename_completion_function(text: *const u8, state: isize) -> *const u8;
+        fn rl_completion_entry_function(text: *const c_char, state: isize) -> *const c_char;
+        fn rl_filename_completion_function(text: *const c_char, state: isize) -> *const c_char;
 
         fn rl_complete(ignore: isize, key: isize) -> isize;
 
         // completion options
-        static rl_ignore_completion_duplicates: isize; // TODO
-        fn rl_ignore_some_completions_function(matches: *const *const c_char) -> isize; // TODO
+        static rl_ignore_completion_duplicates: isize;
+        static rl_filename_completion_desired: isize;
+        // fn rl_ignore_some_completions_function(matches: *const *const c_char) -> isize; // TODO
     }
 
     // not sure why we need this
@@ -146,18 +158,18 @@ pub extern fn rl_custom_function(ignore: isize, key: isize) -> isize {
     readline::hijack_completion(ignore, key, custom_complete)
 }
 
-extern fn custom_complete(text: *const u8, start: isize, end: isize) -> *const *const u8 {
+extern fn custom_complete(text: *const c_char, start: isize, end: isize) -> *const *const c_char {
     let matches = readline::get_completions(text, start, end);
 
     if let Some(value) = _custom_complete(text, matches) {
         readline::free_match_list(matches);
         readline::vec_to_c_array(value)
     } else {
-        matches as *const *const u8
+        matches as *const *const c_char
     }
 }
 
-fn _custom_complete(text: *const u8, matches: *const *const c_char) -> Option<Vec<String>> {
+fn _custom_complete(text: *const c_char, matches: *const *const c_char) -> Option<Vec<String>> {
     let text = unsafe{ CStr::from_ptr(text as *const c_char) }.to_bytes();
     let text = std::str::from_utf8(text).unwrap();
 
@@ -193,9 +205,19 @@ fn _custom_complete(text: *const u8, matches: *const *const c_char) -> Option<Ve
         matches.dedup();
     }
 
+    let append_slash = readline::filename_completion_desired() && readline::complete_mark_directories();
+
     for line in matches {
+        let mut result = stdin.write_all(line.as_bytes());
+        if append_slash {
+            match metadata(line) {
+                Ok(ref f) if f.is_dir() => { result = result.and_then(|_| stdin.write_all(b"/")); },
+                _ => (),
+            }
+        }
+        let result = result.and_then(|_| stdin.write_all(b"\n"));
         // break on errors (but otherwise ignore)
-        if ! (stdin.write_all(line.as_bytes()).is_ok() && stdin.write_all(b"\n").is_ok() ) {
+        if result.is_err() {
             break
         }
     }

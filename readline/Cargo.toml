@@ -4,7 +4,8 @@ version = "0.1.0"
 authors = ["林千里 <lincheney@gmail.com>"]
 
 [dependencies]
-libc = "0.2.0"
+libc = "0.2.65"
+lazy_static = "1.4.0"
 
 [lib]
 name = "rl_custom_complete"

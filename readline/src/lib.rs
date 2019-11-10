@@ -1,95 +1,128 @@
+#[macro_use]
+extern crate lazy_static;
 extern crate libc;
 
 use std::io::{Write, BufReader, BufRead};
 use std::process::{Command, Stdio};
-use std::os::raw::c_char;
 use std::ffi::CStr;
 
-#[derive(Clone, Copy)]
-struct CArray {
-    ptr: *const *const c_char
+macro_rules! dynlib_call {
+    ($func:ident($($args:expr),*)) => {{
+        let ptr = {
+            use libc::$func;
+            $func($($args),*)
+        };
+        if ptr.is_null() {
+            let error = libc::dlerror();
+            if error.is_null() {
+                Err(concat!("unknown error calling: ", stringify!($func)))
+            } else {
+                Err(std::ffi::CStr::from_ptr(error).to_str().unwrap())
+            }
+        } else {
+            Ok(ptr)
+        }
+    }}
 }
 
-impl CArray {
-    fn new(ptr: *const *const c_char) -> Self {
-        CArray{ptr}
-    }
+macro_rules! dlopen {
+    ($name:expr) => { dlopen!($name, libc::RTLD_LAZY) };
+    ($name:expr, $flags:expr) => { dynlib_call!(dlopen($name.as_ptr() as _, $flags)) };
 }
+
+macro_rules! dlsym {
+    ($handle:expr, $name:expr) => {
+        dlsym!($handle, $name, _)
+    };
+    ($handle:expr, $name:expr, $type:ty) => {{
+        let name = concat!($name, "\0");
+        #[allow(clippy::transmute_ptr_to_ptr)]
+        dynlib_call!(dlsym($handle, name.as_ptr() as _)).map(|sym|
+            std::mem::transmute::<_, $type>(sym)
+        )
+    }}
+}
+
+#[derive(Clone, Copy)]
+struct CArray(*const *const i8);
 
 impl Iterator for CArray {
-    type Item = *const c_char;
-    fn next(&mut self) -> Option<*const c_char> {
-        if self.ptr.is_null() { return None }
-        if unsafe{ *(self.ptr) }.is_null() { return None }
-        let value = unsafe{ &**self.ptr };
+    type Item = *const i8;
+    fn next(&mut self) -> Option<*const i8> {
+        if self.0.is_null() { return None }
+        if unsafe{ *(self.0) }.is_null() { return None }
+        let value = unsafe{ &**self.0 };
         // let value = unsafe{ CStr::from_ptr(&**self.ptr) }.to_bytes();
-        self.ptr = unsafe{ self.ptr.offset(1) };
+        self.0 = unsafe{ self.0.offset(1) };
         Some(value)
     }
 }
 
-fn make_cstr(ptr: *const c_char) -> &'static [u8] {
+fn make_cstr(ptr: *const i8) -> &'static [u8] {
     unsafe{ CStr::from_ptr(ptr) }.to_bytes()
 }
 
 mod readline {
     use std::ffi::{CStr, CString};
-    use std::os::raw::c_char;
+
+    #[allow(non_upper_case_globals)]
+    static mut original_rl_attempted_completion_function: Option<lib::rl_completion_func_t> = None;
 
     pub fn refresh_line() {
         unsafe{ lib::rl_refresh_line(0, 0) };
     }
 
     pub fn get_readline_name() -> Option<&'static str> {
-        if unsafe{ lib::rl_readline_name }.is_null() { return None; }
-        unsafe{ CStr::from_ptr(lib::rl_readline_name) }.to_str().ok()
+        if lib::rl_readline_name.is_null() {
+            None
+        } else {
+            unsafe{ CStr::from_ptr(lib::rl_readline_name.ptr()) }.to_str().ok()
+        }
     }
 
     pub fn hijack_completion(ignore: isize, key: isize, new_function: lib::rl_completion_func_t) -> isize {
         unsafe {
-            original_rl_attempted_completion_function = lib::rl_attempted_completion_function;
-            lib::rl_attempted_completion_function = Some(new_function);
+            original_rl_attempted_completion_function = Some(*lib::rl_attempted_completion_function.ptr());
+            lib::rl_attempted_completion_function.set(new_function);
             let value = lib::rl_complete(ignore, key);
-            lib::rl_attempted_completion_function = original_rl_attempted_completion_function;
+            lib::rl_attempted_completion_function.set(original_rl_attempted_completion_function.unwrap());
             value
         }
     }
 
-    pub fn vec_to_c_array(mut vec: Vec<String>) -> *const *const c_char {
+    pub fn vec_to_c_array(mut vec: Vec<String>) -> *const *const i8 {
         if vec.is_empty() {
-            return ::std::ptr::null();
+            return std::ptr::null();
         }
         // make array of pointers
-        let mut array: Vec<*const c_char> = vec.iter_mut().map(|s| {
+        let mut array: Vec<*const i8> = vec.iter_mut().map(|s| {
             s.push('\0');
             s.as_ptr() as *const _
         }).collect();
-        array.push(::std::ptr::null());
+        array.push(std::ptr::null());
         array.shrink_to_fit();
 
         let ptr = array.as_ptr();
 
         // drop ref to data to avoid gc
-        ::std::mem::forget(vec);
-        ::std::mem::forget(array);
+        std::mem::forget(vec);
+        std::mem::forget(array);
         ptr
     }
 
-    #[allow(non_upper_case_globals)]
-    static mut original_rl_attempted_completion_function: Option<lib::rl_completion_func_t> = None;
-
-    pub fn get_completions(text: *const c_char, start: isize, end: isize) -> *const *const c_char {
+    pub fn get_completions(text: *const i8, start: isize, end: isize) -> *const *const i8 {
         unsafe {
             let matches = if let Some(func) = original_rl_attempted_completion_function {
                 func(text, start, end)
             } else {
-                ::std::ptr::null()
+                std::ptr::null()
             };
 
             if matches.is_null() {
-                let func = match null_readline::rl_completion_entry_function {
-                    Some(_) => lib::rl_completion_entry_function,
-                    None => lib::rl_filename_completion_function,
+                let func = if lib::rl_completion_entry_function.is_null() {
+                    *lib::rl_filename_completion_function as _
+                } else {
+                    *lib::rl_completion_entry_function.ptr()
                 };
                 lib::rl_completion_matches(text, func)
             } else {
@@ -98,23 +131,23 @@ mod readline {
         }
     }
 
-    pub fn free_match_list(matches: *const *const c_char) {
-        for line in ::CArray::new(matches) {
-            unsafe{ ::libc::free(line as *mut ::libc::c_void) };
+    pub fn free_match_list(matches: *const *const i8) {
+        for line in ::CArray(matches) {
+            unsafe{ libc::free(line as *mut libc::c_void) };
         }
-        unsafe{ ::libc::free(matches as *mut ::libc::c_void) };
+        unsafe{ libc::free(matches as *mut libc::c_void) };
     }
 
     pub fn ignore_completion_duplicates() -> bool {
-        (unsafe{ lib::rl_ignore_completion_duplicates }) > 0
+        *lib::rl_ignore_completion_duplicates > 0
     }
 
     pub fn filename_completion_desired() -> bool {
-        (unsafe{ lib::rl_filename_completion_desired }) > 0
+        *lib::rl_filename_completion_desired > 0
     }
 
     pub fn mark_directories() -> bool {
-        let value = unsafe{ lib::rl_variable_value(b"mark-directories\0" as *const u8 as *const c_char) };
+        let value = unsafe{ lib::rl_variable_value(b"mark-directories\0".as_ptr() as _) };
         !value.is_null() && (unsafe{ CStr::from_ptr(value) }).to_bytes() == b"on"
     }
 
@@ -125,42 +158,41 @@ mod readline {
         std::str::from_utf8(value).map(|s| s.to_owned())
     }
 
+    #[allow(non_upper_case_globals, non_camel_case_types)]
     mod lib {
-        use super::c_char;
+        use std::marker::PhantomData;
+        pub type rl_completion_func_t = extern fn(*const i8, isize, isize) -> *const *const i8;
+        pub type rl_compentry_func_t = unsafe extern fn(*const i8, isize) -> *const i8;
 
-        #[allow(non_camel_case_types)]
-        pub type rl_completion_func_t = extern fn(*const c_char, isize, isize) -> *const *const c_char;
-        #[allow(non_camel_case_types)]
-        pub type rl_compentry_func_t = unsafe extern fn(*const c_char, isize) -> *const c_char;
-
-        #[link(name = "readline")]
-        extern {
-            pub fn rl_refresh_line(count: isize, key: isize) -> isize;
-            pub fn rl_completion_matches(text: *const c_char, func: rl_compentry_func_t) -> *const *const c_char;
-            pub fn rl_variable_value(name: *const c_char) -> *const c_char;
-            pub static rl_readline_name: *const c_char;
-            pub static mut rl_attempted_completion_function: Option<rl_completion_func_t>;
-
-            pub fn tilde_expand(string: *const c_char) -> *const c_char;
-
-            pub fn rl_completion_entry_function(text: *const c_char, state: isize) -> *const c_char;
-            pub fn rl_filename_completion_function(text: *const c_char, state: isize) -> *const c_char;
-
-            pub fn rl_complete(ignore: isize, key: isize) -> isize;
-
-            // completion options
-            pub static rl_ignore_completion_duplicates: isize;
-            pub static rl_filename_completion_desired: isize;
-            // fn rl_ignore_some_completions_function(matches: *const *const c_char) -> isize; // TODO
+        pub struct Pointer<T>(usize, PhantomData<T>);
+        impl<T> Pointer<T> {
+            pub fn new(ptr: *mut T)    -> Self { Self(ptr as _, PhantomData) }
+            pub fn is_null(&self)      -> bool { self.0 == 0 }
+            pub fn ptr(&self)        -> *mut T { self.0 as *mut T }
+            pub unsafe fn set(&self, value: T) { *self.ptr() = value; }
         }
-    }
 
-    // not sure why we need this
-    mod null_readline {
-        #[link(name = "readline")]
-        extern {
-            pub static rl_completion_entry_function: Option<super::lib::rl_compentry_func_t>;
+        lazy_static! {
+            static ref libreadline: Pointer<libc::c_void> = Pointer::new(unsafe{ dlopen!(b"libreadline.so\0") }.unwrap());
         }
+        macro_rules! readline_lookup {
+            ($name:ident: $type:ty) => {
+                lazy_static! { pub static ref $name: $type = unsafe{ dlsym!(libreadline.ptr(), stringify!($name)) }.unwrap(); }
+            }
+        }
+
+        readline_lookup!(rl_refresh_line:                  unsafe extern fn(isize, isize) -> isize);
+        readline_lookup!(rl_completion_matches:            unsafe extern fn(*const i8, rl_compentry_func_t) -> *const *const i8);
+        readline_lookup!(rl_variable_value:                unsafe extern fn(*const i8) -> *const i8);
+        readline_lookup!(rl_readline_name:                 Pointer<i8>);
+        readline_lookup!(tilde_expand:                     unsafe extern fn(*const i8) -> *const i8);
+        readline_lookup!(rl_filename_completion_function:  rl_compentry_func_t);
+        readline_lookup!(rl_complete:                      unsafe extern fn(isize, isize) -> isize);
+        readline_lookup!(rl_ignore_completion_duplicates:  isize);
+        readline_lookup!(rl_filename_completion_desired:   isize);
+
+        readline_lookup!(rl_attempted_completion_function: Pointer<rl_completion_func_t>);
+        readline_lookup!(rl_completion_entry_function:     Pointer<rl_compentry_func_t>);
     }
 }
 
@@ -169,19 +201,19 @@ pub extern fn rl_custom_function(ignore: isize, key: isize) -> isize {
     readline::hijack_completion(ignore, key, custom_complete)
 }
 
-extern fn custom_complete(text: *const c_char, start: isize, end: isize) -> *const *const c_char {
+extern fn custom_complete(text: *const i8, start: isize, end: isize) -> *const *const i8 {
     let matches = readline::get_completions(text, start, end);
 
     if let Some(value) = _custom_complete(text, matches) {
         readline::free_match_list(matches);
         readline::vec_to_c_array(value)
     } else {
-        matches as *const *const c_char
+        matches as *const *const i8
     }
 }
 
-fn _custom_complete(text: *const c_char, matches: *const *const c_char) -> Option<Vec<String>> {
-    let text = unsafe{ CStr::from_ptr(text as *const c_char) }.to_bytes();
+fn _custom_complete(text: *const i8, matches: *const *const i8) -> Option<Vec<String>> {
+    let text = unsafe{ CStr::from_ptr(text as *const i8) }.to_bytes();
     let text = std::str::from_utf8(text).unwrap();
 
     let mut command = Command::new("rl_custom_complete");
@@ -200,7 +232,7 @@ fn _custom_complete(text: *const c_char, matches: *const *const c_char) -> Optio
     };
     let mut stdin = process.stdin.unwrap();
 
-    let matches = CArray::new(matches);
+    let matches = CArray(matches);
     let length = matches.count();
     let skip = if length == 1 { 0 } else { 1 };
     let mut matches: Vec<_> = matches

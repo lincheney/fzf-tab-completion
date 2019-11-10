@@ -12,7 +12,7 @@ struct CArray {
 
 impl CArray {
     fn new(ptr: *const *const c_char) -> Self {
-        CArray{ptr: ptr}
+        CArray{ptr}
     }
 }
 
@@ -72,14 +72,14 @@ mod readline {
         // drop ref to data to avoid gc
         ::std::mem::forget(vec);
         ::std::mem::forget(array);
-        return ptr;
+        ptr
     }
 
     #[allow(non_upper_case_globals)]
     static mut original_rl_attempted_completion_function: Option<lib::rl_completion_func_t> = None;
 
     pub fn get_completions(text: *const c_char, start: isize, end: isize) -> *const *const c_char {
-        let matches = unsafe {
+        unsafe {
             let matches = if let Some(func) = original_rl_attempted_completion_function {
                 func(text, start, end)
             } else {
@@ -95,8 +95,7 @@ mod readline {
             } else {
                 matches
             }
-        } as *const *const c_char;
-        matches
+        }
     }
 
     pub fn free_match_list(matches: *const *const c_char) {
@@ -202,10 +201,9 @@ fn _custom_complete(text: *const c_char, matches: *const *const c_char) -> Optio
     let mut stdin = process.stdin.unwrap();
 
     let matches = CArray::new(matches);
-    let length = matches.into_iter().count();
+    let length = matches.count();
     let skip = if length == 1 { 0 } else { 1 };
     let mut matches: Vec<_> = matches
-        .into_iter()
         .skip(skip)
         .map(make_cstr)
         .filter_map(|l| std::str::from_utf8(l).ok())

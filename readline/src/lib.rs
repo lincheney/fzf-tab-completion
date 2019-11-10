@@ -5,6 +5,7 @@ use std::process::{Command, Stdio};
 use std::os::raw::c_char;
 use std::ffi::CStr;
 
+#[derive(Clone, Copy)]
 struct CArray {
     ptr: *const *const c_char
 }
@@ -110,6 +111,10 @@ mod readline {
         unsafe{ ::libc::free(matches as *mut ::libc::c_void) };
     }
 
+    pub fn ignore_completion_duplicates() -> bool {
+        (unsafe{ rl_ignore_completion_duplicates }) > 0
+    }
+
     #[link(name = "readline")]
     extern {
         fn rl_refresh_line(count: isize, key: isize) -> isize;
@@ -121,6 +126,10 @@ mod readline {
         fn rl_filename_completion_function(text: *const u8, state: isize) -> *const u8;
 
         fn rl_complete(ignore: isize, key: isize) -> isize;
+
+        // completion options
+        static rl_ignore_completion_duplicates: isize; // TODO
+        fn rl_ignore_some_completions_function(matches: *const *const c_char) -> isize; // TODO
     }
 
     // not sure why we need this
@@ -168,14 +177,25 @@ fn _custom_complete(text: *const u8, matches: *const *const c_char) -> Option<Ve
     };
     let mut stdin = process.stdin.unwrap();
 
-    let matches: Vec<_> = CArray::new(matches).collect();
-    let skip = if matches.len() == 1 { 0 } else { 1 };
-    let matches = matches.into_iter().skip(skip);
+    let matches = CArray::new(matches);
+    let length = matches.into_iter().count();
+    let skip = if length == 1 { 0 } else { 1 };
+    let mut matches: Vec<_> = matches
+        .into_iter()
+        .skip(skip)
+        .map(make_cstr)
+        .filter_map(|l| std::str::from_utf8(l).ok())
+        .filter(|l| !l.is_empty())
+        .collect();
+
+    if readline::ignore_completion_duplicates() {
+        matches.sort();
+        matches.dedup();
+    }
+
     for line in matches {
-        let line = make_cstr(line);
-        if line.is_empty() { continue }
         // break on errors (but otherwise ignore)
-        if ! (stdin.write_all(line).is_ok() && stdin.write_all(b"\n").is_ok() ) {
+        if ! (stdin.write_all(line.as_bytes()).is_ok() && stdin.write_all(b"\n").is_ok() ) {
             break
         }
     }

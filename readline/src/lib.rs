@@ -85,7 +85,9 @@ mod readline {
             original_rl_attempted_completion_function = Some(*lib::rl_attempted_completion_function.ptr());
             lib::rl_attempted_completion_function.set(new_function);
             let value = lib::rl_complete(ignore, key);
-            lib::rl_attempted_completion_function.set(original_rl_attempted_completion_function.unwrap());
+            if let Some(func) = original_rl_attempted_completion_function.take() {
+                lib::rl_attempted_completion_function.set(func);
+            }
             value
         }
     }

@@ -218,18 +218,22 @@ fn _custom_complete(text: *const c_char, matches: *const *const c_char) -> Optio
     let append_slash = readline::filename_completion_desired() && readline::mark_directories();
 
     for line in matches {
-        let mut result = stdin.write_all(line.as_bytes());
+        // break on errors (but otherwise ignore)
+        if stdin.write_all(line.as_bytes()).is_err() {
+            break
+        }
+
         if append_slash {
             if let Ok(line) = readline::tilde_expand(line) {
                 match std::fs::metadata(line) {
-                    Ok(ref f) if f.is_dir() => { result = result.and_then(|_| stdin.write_all(b"/")); },
+                    Ok(ref f) if f.is_dir() => if stdin.write_all(b"/").is_err() {
+                        break
+                    }
                     _ => (),
                 }
             }
         }
-        let result = result.and_then(|_| stdin.write_all(b"\n"));
-        // break on errors (but otherwise ignore)
-        if result.is_err() {
+        if stdin.write_all(b"\n").is_err() {
             break
         }
     }

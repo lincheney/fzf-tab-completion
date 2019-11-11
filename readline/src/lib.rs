@@ -6,28 +6,31 @@ use std::io::{Write, BufReader, BufRead};
 use std::process::{Command, Stdio};
 use std::ffi::CStr;
 
+type DynlibResult<T> = Result<T, &'static str>;
+
+macro_rules! dump_error {
+    ($result:expr, $default:expr) => {
+        match $result {
+            Ok(x) => x,
+            Err(e) => { eprintln!("{}", e); return $default },
+        }
+    }
+}
+
 macro_rules! dynlib_call {
     ($func:ident($($args:expr),*)) => {{
-        let ptr = {
-            use libc::$func;
-            $func($($args),*)
-        };
+        let ptr = libc::$func($($args),*);
         if ptr.is_null() {
-            let error = libc::dlerror();
+            let error = ::libc::dlerror();
             if error.is_null() {
                 Err(concat!("unknown error calling: ", stringify!($func)))
             } else {
-                Err(std::ffi::CStr::from_ptr(error).to_str().unwrap())
+                Err(::std::ffi::CStr::from_ptr(error).to_str().unwrap())
             }
         } else {
             Ok(ptr)
         }
     }}
-}
-
-macro_rules! dlopen {
-    ($name:expr) => { dlopen!($name, libc::RTLD_LAZY) };
-    ($name:expr, $flags:expr) => { dynlib_call!(dlopen($name.as_ptr() as _, $flags)) };
 }
 
 macro_rules! dlsym {
@@ -67,28 +70,27 @@ mod readline {
     #[allow(non_upper_case_globals)]
     static mut original_rl_attempted_completion_function: Option<lib::rl_completion_func_t> = None;
 
-    pub fn refresh_line() {
-        unsafe{ lib::rl_refresh_line(0, 0) };
+    pub fn refresh_line() -> ::DynlibResult<()> {
+        unsafe{ (*lib::rl_refresh_line)?(0, 0) };
+        Ok(())
     }
 
-    pub fn get_readline_name() -> Option<&'static str> {
-        unsafe {
-            let name = (*lib::rl_readline_name.ptr()).ptr();
-            if name.is_null() {
-                None
-            } else {
-                CStr::from_ptr(name).to_str().ok()
-            }
+    pub fn get_readline_name() -> ::DynlibResult<Option<&'static str>> {
+        match lib::rl_readline_name.as_ref() {
+            Ok(n) if n.ptr().is_null() => Ok(None),
+            Ok(n) => Ok(unsafe{ CStr::from_ptr(n.ptr() as _) }.to_str().ok()),
+            Err(e) => Err(e)
         }
     }
 
-    pub fn hijack_completion(ignore: isize, key: isize, new_function: lib::rl_completion_func_t) -> isize {
+    pub fn hijack_completion(ignore: isize, key: isize, new_function: lib::rl_completion_func_t) -> ::DynlibResult<isize> {
         unsafe {
-            original_rl_attempted_completion_function = *lib::rl_attempted_completion_function.ptr();
-            lib::rl_attempted_completion_function.set(Some(new_function));
-            let value = lib::rl_complete(ignore, key);
-            lib::rl_attempted_completion_function.set(original_rl_attempted_completion_function);
-            value
+            let ptr = (*lib::rl_attempted_completion_function)?;
+            original_rl_attempted_completion_function = *ptr.ptr();
+            *ptr.ptr() = Some(new_function);
+            let value = (*lib::rl_complete)?(ignore, key);
+            *ptr.ptr() = original_rl_attempted_completion_function;
+            Ok(value)
         }
     }
 
@@ -112,7 +114,7 @@ mod readline {
         ptr
     }
 
-    pub fn get_completions(text: *const i8, start: isize, end: isize) -> *const *const i8 {
+    pub fn get_completions(text: *const i8, start: isize, end: isize) -> ::DynlibResult<*const *const i8> {
         unsafe {
             let matches = if let Some(func) = original_rl_attempted_completion_function {
                 func(text, start, end)
@@ -120,13 +122,13 @@ mod readline {
                 std::ptr::null()
             };
 
-            if matches.is_null() {
-                let func = (*lib::rl_completion_entry_function.ptr())
-                    .unwrap_or(*lib::rl_filename_completion_function);
-                lib::rl_completion_matches(text, func)
+            Ok(if matches.is_null() {
+                let func = (*(*lib::rl_completion_entry_function)?.ptr())
+                    .unwrap_or((*lib::rl_filename_completion_function)?);
+                (*lib::rl_completion_matches)?(text, func)
             } else {
                 matches
-            }
+            })
         }
     }
 
@@ -137,24 +139,24 @@ mod readline {
         unsafe{ libc::free(matches as *mut libc::c_void) };
     }
 
-    pub fn ignore_completion_duplicates() -> bool {
-        unsafe{ *lib::rl_ignore_completion_duplicates.ptr() > 0 }
+    pub fn ignore_completion_duplicates() -> ::DynlibResult<bool> {
+        Ok(unsafe{ *(*lib::rl_ignore_completion_duplicates)?.ptr() > 0 })
     }
 
-    pub fn filename_completion_desired() -> bool {
-        unsafe{ *lib::rl_filename_completion_desired.ptr() > 0 }
+    pub fn filename_completion_desired() -> ::DynlibResult<bool> {
+        Ok(unsafe{ *(*lib::rl_filename_completion_desired)?.ptr() > 0 })
     }
 
-    pub fn mark_directories() -> bool {
-        let value = unsafe{ lib::rl_variable_value(b"mark-directories\0".as_ptr() as _) };
-        !value.is_null() && (unsafe{ CStr::from_ptr(value) }).to_bytes() == b"on"
+    pub fn mark_directories() -> ::DynlibResult<bool> {
+        let value = unsafe{ (*lib::rl_variable_value)?(b"mark-directories\0".as_ptr() as _) };
+        Ok(!value.is_null() && (unsafe{ CStr::from_ptr(value) }).to_bytes() == b"on")
     }
 
-    pub fn tilde_expand(string: &str) -> Result<String, std::str::Utf8Error> {
+    pub fn tilde_expand(string: &str) -> ::DynlibResult<Result<String, std::str::Utf8Error>> {
         let string = CString::new(string).unwrap();
         let ptr = string.as_ptr();
-        let value = unsafe{ CStr::from_ptr(lib::tilde_expand(ptr)) }.to_bytes();
-        std::str::from_utf8(value).map(|s| s.to_owned())
+        let value = unsafe{ CStr::from_ptr((*lib::tilde_expand)?(ptr)) }.to_bytes();
+        Ok(std::str::from_utf8(value).map(|s| s.to_owned()))
     }
 
     #[allow(non_upper_case_globals, non_camel_case_types)]
@@ -166,23 +168,21 @@ mod readline {
         #[derive(Copy, Clone)]
         pub struct Pointer<T>(usize, PhantomData<T>);
         impl<T> Pointer<T> {
-            pub fn new(ptr: *mut T)    -> Self { Self(ptr as _, PhantomData) }
-            pub fn ptr(&self)        -> *mut T { self.0 as *mut T }
-            pub unsafe fn set(&self, value: T) { *self.ptr() = value; }
+            pub fn ptr(&self) -> *mut T { self.0 as *mut T }
         }
 
-        lazy_static! {
-            pub static ref libreadline: Pointer<libc::c_void> = Pointer::new(unsafe {
-                if dlsym!(libc::RTLD_DEFAULT, "rl_initialize", usize).is_ok() {
-                    libc::RTLD_DEFAULT
-                } else {
-                    dlopen!(b"libreadline.so\0").unwrap()
-                }
-            });
-        }
         macro_rules! readline_lookup {
             ($name:ident: $type:ty) => {
-                lazy_static! { pub static ref $name: $type = unsafe{ dlsym!(libreadline.ptr(), stringify!($name)) }.unwrap(); }
+                readline_lookup!($name: $type; libc::RTLD_DEFAULT);
+            };
+            ($name:ident: $type:ty; $handle:expr) => {
+                lazy_static! {
+                    pub static ref $name: ::DynlibResult<$type> = unsafe {
+                        dlsym!($handle, stringify!($name)).or_else(|_|
+                            dynlib_call!(dlopen(b"libreadline.so\0".as_ptr() as _, libc::RTLD_NOLOAD | libc::RTLD_LAZY))
+                            .and_then(|lib| dlsym!(lib, stringify!($name)))
+                        )};
+                }
             }
         }
 
@@ -202,13 +202,13 @@ mod readline {
 
 #[no_mangle]
 pub extern fn rl_custom_function(ignore: isize, key: isize) -> isize {
-    readline::hijack_completion(ignore, key, custom_complete)
+    dump_error!(readline::hijack_completion(ignore, key, custom_complete), 0)
 }
 
 extern fn custom_complete(text: *const i8, start: isize, end: isize) -> *const *const i8 {
-    let matches = readline::get_completions(text, start, end);
-
-    if let Some(value) = _custom_complete(text, matches) {
+    let matches = dump_error!(readline::get_completions(text, start, end), std::ptr::null());
+    let value = dump_error!(_custom_complete(text, matches), std::ptr::null());
+    if let Some(value) = value {
         readline::free_match_list(matches);
         readline::vec_to_c_array(value)
     } else {
@@ -216,7 +216,7 @@ extern fn custom_complete(text: *const i8, start: isize, end: isize) -> *const *
     }
 }
 
-fn _custom_complete(text: *const i8, matches: *const *const i8) -> Option<Vec<String>> {
+fn _custom_complete(text: *const i8, matches: *const *const i8) -> ::DynlibResult<Option<Vec<String>>> {
     let text = unsafe{ CStr::from_ptr(text as *const i8) }.to_bytes();
     let text = std::str::from_utf8(text).unwrap();
 
@@ -225,14 +225,14 @@ fn _custom_complete(text: *const i8, matches: *const *const i8) -> Option<Vec<St
     command.arg(text);
 
     // pass the readline name to process
-    if let Some(name) = readline::get_readline_name() {
+    if let Some(name) = readline::get_readline_name()? {
         command.env("READLINE_NAME", name);
     }
 
     let mut process = match command.spawn() {
         Ok(process) => process,
         // failed to run, do default completion
-        Err(_) => { return None },
+        Err(_) => { return Ok(None) },
     };
     let mut stdin = process.stdin.unwrap();
 
@@ -246,12 +246,12 @@ fn _custom_complete(text: *const i8, matches: *const *const i8) -> Option<Vec<St
         .filter(|l| !l.is_empty())
         .collect();
 
-    if readline::ignore_completion_duplicates() {
+    if readline::ignore_completion_duplicates()? {
         matches.sort();
         matches.dedup();
     }
 
-    let append_slash = readline::filename_completion_desired() && readline::mark_directories();
+    let append_slash = readline::filename_completion_desired()? && readline::mark_directories()?;
 
     for line in matches {
         // break on errors (but otherwise ignore)
@@ -260,7 +260,7 @@ fn _custom_complete(text: *const i8, matches: *const *const i8) -> Option<Vec<St
         }
 
         if append_slash {
-            if let Ok(line) = readline::tilde_expand(line) {
+            if let Ok(line) = readline::tilde_expand(line)? {
                 match std::fs::metadata(line) {
                     Ok(ref f) if f.is_dir() => if stdin.write_all(b"/").is_err() {
                         break
@@ -278,22 +278,20 @@ fn _custom_complete(text: *const i8, matches: *const *const i8) -> Option<Vec<St
     process.stdin = Some(stdin);
     match process.wait() {
         // failed to run, do default completion
-        Err(_) => {
-            None
-        },
+        Err(_) => Ok(None),
         // exited with code != 0, leave line as is
         Ok(code) if ! code.success() => {
-            readline::refresh_line();
-            Some(vec![])
+            readline::refresh_line()?;
+            Ok(Some(vec![]))
         },
         Ok(_) => {
-            readline::refresh_line();
+            readline::refresh_line()?;
             let stdout = process.stdout.unwrap();
             // readline multi completion doesn't play nice
             // join by spaces here and insert as one value instead
             let vec: Vec<_> = BufReader::new(stdout).lines().map(|l| l.unwrap()).collect();
             let string = vec.join(" ");
-            Some(vec![string])
+            Ok(Some(vec![string]))
         }
     }
 }

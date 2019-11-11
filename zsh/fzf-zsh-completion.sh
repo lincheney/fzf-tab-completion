@@ -114,9 +114,16 @@ _fzf_completion_selector() {
         fi
     done
 
+    local context field=2
+    context="${compstate[context]//-/-}"
+    context="${context:=-$context-}"
+    if zstyle -t ":completion:${context:-*}:*:${words[1]}" fzf-search-display; then
+        field=2..5
+    fi
+
     tput cud1 >/dev/tty # fzf clears the line on exit so move down one
     FZF_DEFAULT_OPTS="--height ${FZF_TMUX_HEIGHT:-40%} --reverse $FZF_DEFAULT_OPTS $FZF_COMPLETION_OPTS" \
-        fzf --ansi --prompt "> $PREFIX" -d "$_FZF_COMPLETION_SEP" --with-nth 3..5 --nth 2 \
+        fzf --ansi --prompt "> $PREFIX" -d "$_FZF_COMPLETION_SEP" --with-nth 3..5 --nth "$field" \
         < <(printf %s\\n "${lines[@]}"; cat)
     code="$?"
     tput cuu1 >/dev/tty

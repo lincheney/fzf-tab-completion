@@ -72,7 +72,8 @@ fzf_completion() {
             while IFS="$_FZF_COMPLETION_SEP" read -r -A value; do
                 index="${value[1]}"
                 opts="${__compadd_args[$index]}"
-                eval "$opts -- ${value[2]}"
+                value=( "${(Q)value[2]}" )
+                eval "$opts -a value"
             done <<<"$value"
             # insert everything added by fzf
             compstate[insert]=all

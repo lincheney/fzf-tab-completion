@@ -31,7 +31,7 @@ fzf_completion() {
         if [[ "$functions[_approximate]" == 'builtin autoload'* ]]; then
             _approximate() {
                 unfunction _approximate
-                echo builtin autoload +XUz _approximate >&"${__evaled}"
+                printf %s\\n builtin autoload +XUz _approximate >&"${__evaled}"
                 builtin autoload +XUz _approximate
                 override_approximate
                 _approximate "$@"
@@ -55,7 +55,7 @@ fzf_completion() {
                     _main_complete 2>&1 1>&"${__stdout}"
                     <<<"$autoloads" fgrep -xv "$(functions -u +)" | sed 's/^/builtin autoload +XUz /' >&"${__evaled}"
                 )"
-                echo "stderr=${(q)stderr}" >&"${__evaled}"
+                printf %s\\n "stderr=${(q)stderr}" >&"${__evaled}"
             ) | awk -F"$_FZF_COMPLETION_SEP" '$2!="" && !x[$2]++ { print $0; system("") }'
         )
         coproc_pid="$!"
@@ -104,7 +104,7 @@ _fzf_completion_selector() {
             if read -r; then
                 lines+=( "$REPLY" )
             elif (( ${#lines[@]} == 1 )); then # only one input
-                echo "${lines[1]}" && return
+                printf %s\\n "${lines[1]}" && return
             else # no input
                 return 1
             fi
@@ -183,7 +183,7 @@ _fzf_completion_compadd() {
         fi
 
         # index, value, prefix, show, display
-        echo "${__comp_index}${_FZF_COMPLETION_SEP}${(q)__hit_str}${_FZF_COMPLETION_SEP}${__show_str}${_FZF_COMPLETION_SEP}${__disp_str}"
+        printf %s\\n "${__comp_index}${_FZF_COMPLETION_SEP}${(q)__hit_str}${_FZF_COMPLETION_SEP}${__show_str}${_FZF_COMPLETION_SEP}${__disp_str}"
     done
     return "$code"
 }

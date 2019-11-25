@@ -31,7 +31,7 @@ fzf_completion() {
         if [[ "$functions[_approximate]" == 'builtin autoload'* ]]; then
             _approximate() {
                 unfunction _approximate
-                printf %s\\n builtin autoload +XUz _approximate >&"${__evaled}"
+                printf %s\\n "builtin autoload +XUz _approximate" >&"${__evaled}"
                 builtin autoload +XUz _approximate
                 override_approximate
                 _approximate "$@"

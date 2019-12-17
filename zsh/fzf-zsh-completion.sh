@@ -92,7 +92,7 @@ fzf_completion() {
     if [ -n "$stderr" ]; then
         zle -M -- "$stderr"
     else
-        zle -R ' '
+        zle -R ' ' ' '
     fi
 }
 

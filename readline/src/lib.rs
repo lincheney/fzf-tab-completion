@@ -65,7 +65,7 @@ fn make_cstr(ptr: *const i8) -> &'static [u8] {
 }
 
 mod readline {
-    use std::ffi::{CStr, CString};
+    use std::ffi::CStr;
 
     #[allow(non_upper_case_globals)]
     static mut original_rl_attempted_completion_function: Option<lib::rl_completion_func_t> = None;
@@ -152,11 +152,11 @@ mod readline {
         Ok(!value.is_null() && (unsafe{ CStr::from_ptr(value) }).to_bytes() == b"on")
     }
 
-    pub fn tilde_expand(string: &str) -> ::DynlibResult<Result<String, std::str::Utf8Error>> {
-        let string = CString::new(string).unwrap();
-        let ptr = string.as_ptr();
-        let value = unsafe{ CStr::from_ptr((*lib::tilde_expand)?(ptr)) }.to_bytes();
-        Ok(std::str::from_utf8(value).map(|s| s.to_owned()))
+    pub fn tilde_expand(string: &str) -> ::DynlibResult<String> {
+        let string = std::ffi::CString::new(string).unwrap();
+        let string = unsafe{ (*lib::tilde_expand)?(string.as_ptr()) };
+        let string = unsafe{ std::ffi::CString::from_raw(string) }.into_string();
+        string.map_err(|_| "tilde_expand: invalid utf-8")
     }
 
     #[allow(non_upper_case_globals, non_camel_case_types)]
@@ -190,7 +190,7 @@ mod readline {
         readline_lookup!(rl_completion_matches:            unsafe extern fn(*const i8, rl_compentry_func_t) -> *const *const i8);
         readline_lookup!(rl_variable_value:                unsafe extern fn(*const i8) -> *const i8);
         readline_lookup!(rl_readline_name:                 Pointer<Pointer<i8>>);
-        readline_lookup!(tilde_expand:                     unsafe extern fn(*const i8) -> *const i8);
+        readline_lookup!(tilde_expand:                     unsafe extern fn(*const i8) -> *mut i8);
         readline_lookup!(rl_filename_completion_function:  rl_compentry_func_t);
         readline_lookup!(rl_completion_entry_function:     Pointer<Option<rl_compentry_func_t>>);
         readline_lookup!(rl_complete:                      unsafe extern fn(isize, isize) -> isize);
@@ -260,13 +260,12 @@ fn _custom_complete(text: *const i8, matches: *const *const i8) -> ::DynlibResul
         }
 
         if append_slash {
-            if let Ok(line) = readline::tilde_expand(line)? {
-                match std::fs::metadata(line) {
-                    Ok(ref f) if f.is_dir() => if stdin.write_all(b"/").is_err() {
-                        break
-                    }
-                    _ => (),
+            let line = readline::tilde_expand(line)?;
+            match std::fs::metadata(line) {
+                Ok(ref f) if f.is_dir() => if stdin.write_all(b"/").is_err() {
+                    break
                 }
+                _ => (),
             }
         }
         if stdin.write_all(b"\n").is_err() {

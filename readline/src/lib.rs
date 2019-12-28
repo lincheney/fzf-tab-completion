@@ -101,9 +101,7 @@ mod readline {
         // make array of pointers
         let mut array: Vec<*const i8> = vec.drain(..).map(|mut s| {
             s.push('\0');
-            let ptr = s.as_ptr();
-            std::mem::forget(s);
-            ptr as *const _
+            Box::into_raw(s.into_boxed_str()) as _
         }).collect();
         array.push(std::ptr::null());
         array.shrink_to_fit();

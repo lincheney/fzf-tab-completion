@@ -278,7 +278,10 @@ fn _custom_complete(text: *const i8, matches: *const *const i8) -> ::DynlibResul
             // readline multi completion doesn't play nice
             // join by spaces here and insert as one value instead
             let vec: Vec<_> = BufReader::new(stdout).lines().map(|l| l.unwrap()).collect();
-            let string = vec.join(" ");
+            let mut string = vec.join(" ");
+            if vec.len() > 1 {
+                string.push(' ');
+            }
             Ok(Some(vec![string]))
         }
     }

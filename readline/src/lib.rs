@@ -97,6 +97,9 @@ mod readline {
     }
 
     pub fn vec_to_c_array(mut vec: Vec<String>) -> *const *const i8 {
+        if vec.is_empty() {
+            vec.push("".into());
+        }
         // make array of pointers
         let mut array: Vec<_> = vec.drain(..).map(|s| CString::new(s).unwrap().into_raw() as _).collect();
         array.push(std::ptr::null());

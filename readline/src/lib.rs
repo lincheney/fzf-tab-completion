@@ -52,11 +52,13 @@ struct CArray(*const *const i8);
 impl Iterator for CArray {
     type Item = *const i8;
     fn next(&mut self) -> Option<*const i8> {
-        if self.0.is_null() { return None }
-        if unsafe{ *(self.0) }.is_null() { return None }
-        let value = unsafe{ &**self.0 };
-        self.0 = unsafe{ self.0.offset(1) };
-        Some(value)
+        if self.0.is_null() || unsafe{ *(self.0) }.is_null() {
+            None
+        } else {
+            let value = unsafe{ &**self.0 };
+            self.0 = unsafe{ self.0.offset(1) };
+            Some(value)
+        }
     }
 }
 

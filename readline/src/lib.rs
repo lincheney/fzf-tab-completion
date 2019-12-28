@@ -99,9 +99,11 @@ mod readline {
             return std::ptr::null();
         }
         // make array of pointers
-        let mut array: Vec<*const i8> = vec.iter_mut().map(|s| {
+        let mut array: Vec<*const i8> = vec.drain(..).map(|mut s| {
             s.push('\0');
-            s.as_ptr() as *const _
+            let ptr = s.as_ptr();
+            std::mem::forget(s);
+            ptr as *const _
         }).collect();
         array.push(std::ptr::null());
         array.shrink_to_fit();
@@ -109,7 +111,6 @@ mod readline {
         let ptr = array.as_ptr();
 
         // drop ref to data to avoid gc
-        std::mem::forget(vec);
         std::mem::forget(array);
         ptr
     }

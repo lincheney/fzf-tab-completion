@@ -65,7 +65,7 @@ fn make_cstr(ptr: *const i8) -> &'static [u8] {
 }
 
 mod readline {
-    use std::ffi::CStr;
+    use std::ffi::{CStr, CString};
 
     #[allow(non_upper_case_globals)]
     static mut original_rl_attempted_completion_function: Option<lib::rl_completion_func_t> = None;
@@ -95,22 +95,10 @@ mod readline {
     }
 
     pub fn vec_to_c_array(mut vec: Vec<String>) -> *const *const i8 {
-        if vec.is_empty() {
-            return std::ptr::null();
-        }
         // make array of pointers
-        let mut array: Vec<*const i8> = vec.drain(..).map(|mut s| {
-            s.push('\0');
-            Box::into_raw(s.into_boxed_str()) as _
-        }).collect();
+        let mut array: Vec<_> = vec.drain(..).map(|s| CString::new(s).unwrap().into_raw() as _).collect();
         array.push(std::ptr::null());
-        array.shrink_to_fit();
-
-        let ptr = array.as_ptr();
-
-        // drop ref to data to avoid gc
-        std::mem::forget(array);
-        ptr
+        Box::into_raw(array.into_boxed_slice()) as _
     }
 
     pub fn get_completions(text: *const i8, start: isize, end: isize) -> ::DynlibResult<*const *const i8> {

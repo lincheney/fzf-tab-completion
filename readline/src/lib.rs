@@ -123,9 +123,9 @@ mod readline {
 
     pub fn free_match_list(matches: *const *const i8) {
         for line in ::CArray(matches) {
-            unsafe{ libc::free(line as *mut libc::c_void) };
+            unsafe{ libc::free(line as _) };
         }
-        unsafe{ libc::free(matches as *mut libc::c_void) };
+        unsafe{ libc::free(matches as _) };
     }
 
     pub fn ignore_completion_duplicates() -> ::DynlibResult<bool> {

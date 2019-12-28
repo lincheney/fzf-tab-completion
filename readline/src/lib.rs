@@ -71,6 +71,8 @@ mod readline {
 
     #[allow(non_upper_case_globals)]
     static mut original_rl_attempted_completion_function: Option<lib::rl_completion_func_t> = None;
+    #[allow(non_upper_case_globals)]
+    static mut original_rl_completion_entry_function: Option<lib::rl_compentry_func_t> = None;
 
     pub fn refresh_line() -> ::DynlibResult<()> {
         unsafe{ (*lib::rl_refresh_line)?(0, 0) };
@@ -85,20 +87,37 @@ mod readline {
         }
     }
 
+
+    #[no_mangle]
+    pub extern fn fake_completion_entry_function(_text: *const i8, _state: isize) -> *mut i8 {
+        std::ptr::null_mut()
+    }
+
     pub fn hijack_completion(ignore: isize, key: isize, new_function: lib::rl_completion_func_t) -> ::DynlibResult<isize> {
+        // override both rl_attempted_completion_function AND rl_completion_entry_function
+        // our magic happens in rl_attempted_completion_function
+        // and we prevent the fallback from working in rl_completion_entry_function
         unsafe {
-            let ptr = (*lib::rl_attempted_completion_function)?;
-            original_rl_attempted_completion_function = *ptr.ptr();
-            *ptr.ptr() = Some(new_function);
+            let attempted_ptr = (*lib::rl_attempted_completion_function)?;
+            original_rl_attempted_completion_function = *attempted_ptr.ptr();
+            *attempted_ptr.ptr() = Some(new_function);
+
+            let entry_ptr = (*lib::rl_completion_entry_function)?;
+            original_rl_completion_entry_function = *entry_ptr.ptr();
+            *entry_ptr.ptr() = Some(fake_completion_entry_function);
+
             let value = (*lib::rl_complete)?(ignore, key);
-            *ptr.ptr() = original_rl_attempted_completion_function;
+
+            *attempted_ptr.ptr() = original_rl_attempted_completion_function;
+            *entry_ptr.ptr() = original_rl_completion_entry_function;
+
             Ok(value)
         }
     }
 
     pub fn vec_to_c_array(mut vec: Vec<String>) -> *const *const i8 {
         if vec.is_empty() {
-            vec.push("".into());
+            return std::ptr::null()
         }
         // make array of pointers
         let mut array: Vec<_> = vec.drain(..).map(|s| CString::new(s).unwrap().into_raw() as _).collect();
@@ -115,7 +134,7 @@ mod readline {
             };
 
             Ok(if matches.is_null() {
-                let func = (*(*lib::rl_completion_entry_function)?.ptr())
+                let func = original_rl_completion_entry_function
                     .unwrap_or((*lib::rl_filename_completion_function)?);
                 (*lib::rl_completion_matches)?(text, func)
             } else {
@@ -155,7 +174,7 @@ mod readline {
     mod lib {
         use std::marker::PhantomData;
         pub type rl_completion_func_t = extern fn(*const i8, isize, isize) -> *const *const i8;
-        pub type rl_compentry_func_t = unsafe extern fn(*const i8, isize) -> *const i8;
+        pub type rl_compentry_func_t = unsafe extern fn(*const i8, isize) -> *mut i8;
 
         #[derive(Copy, Clone)]
         pub struct Pointer<T>(usize, PhantomData<T>);

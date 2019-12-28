@@ -21,16 +21,15 @@ Copy [src/rl_custom_complete](src/rl_custom_complete)
 in to your `$PATH` (or write your own).
 The provided script requires [fzf](https://github.com/junegunn/fzf)
 
-Add a binding to your `~/.inpurc`:
+Add to your `~/.inpurc`:
 ```
-"\t": librl_custom_complete
+$include function rl_custom_complete /path/to/librl_custom_complete.so
+"\t": rl_custom_complete
 ```
 
 Run:
 ```bash
-LD_PRELOAD=/path/to/librl_custom_function.so \
-READLINE_CUSTOM_FUNCTION_LIBS=./target/release/librl_custom_complete.so \
-python
+LD_PRELOAD=/path/to/librl_custom_function.so python
 ```
 
 Type `str.` and press the tab key.

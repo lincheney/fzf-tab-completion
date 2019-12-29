@@ -137,7 +137,7 @@ _fzf_completion_compadd() {
     local __flags=()
     local __OAD=()
     local __disp __hits __ipre
-    zparseopts -D -E -a __opts -A __optskv -- "${^_FZF_COMPLETION_FLAGS[@]}+=__flags" F+: P+: S+: p+: s+: i+:=__ipre I+: W+: d+:=__disp J+: V+: X+: x+: r+: R+: D+: O+: A+: E+: M+:
+    zparseopts -D -E -a __opts -A __optskv -- "${^_FZF_COMPLETION_FLAGS[@]}+=__flags" F+: P+: S+: p+: s+: i:=__ipre I+: W+: d:=__disp J+: V+: X+: x+: r+: R+: D+: O+: A+: E+: M+:
     local __filenames="${__flags[(r)-f]}"
 
     if [ -n "${__optskv[(i)-A]}${__optskv[(i)-O]}${__optskv[(i)-D]}" ]; then
@@ -146,7 +146,7 @@ _fzf_completion_compadd() {
         return "$?"
     fi
 
-    __opts+=( -i "${IPREFIX}${__ipre}" )
+    __opts+=( -i "${IPREFIX}${__ipre[2]}" )
 
     if [ "${__disp[2]:0:1}" = '(' ]; then
         eval "__disp=${__disp[2]}"

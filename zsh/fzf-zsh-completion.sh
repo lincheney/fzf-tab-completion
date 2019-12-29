@@ -158,16 +158,21 @@ _fzf_completion_compadd() {
 
     local prefix="${__optskv[-W]:-.}"
     local __disp_str __hit_str __show_str
+    local padding="$(printf %s\\n "${__disp_str[@]}" | awk '{print length}' | sort -nr | head -n1)"
+    padding="$(( padding > COLUMNS ? padding : COLUMNS ))"
 
     for ((i = 1; i <= $#__hits; i++)); do
         __hit_str="${__hits[$i]}"
-        __disp_str="${__disp[$i]:-"${__hit_str}"}"
+        __disp_str="${__disp[$i]}"
         __show_str=
 
-        if [[ "$__disp_str" == "$__hit_str"* ]]; then
+        if [[ -z "$__disp_str" || "$__disp_str" == "$__hit_str"* ]]; then
             __show_str="${(Q)__hit_str}"
             __disp_str="${__disp_str:${#__hit_str}}"
+            printf -v __disp_str "%-${padding}s" "$__disp_str"
             __disp_str=$'\x1b[37m'"$__disp_str"$'\x1b[0m'
+        else
+            printf -v __disp_str "%-${padding}s" "$__disp_str"
         fi
 
         if [ -n "$__filenames" -a "$__show_str" = "$__hit_str" -a -d "${prefix}/$__hit_str" ]; then

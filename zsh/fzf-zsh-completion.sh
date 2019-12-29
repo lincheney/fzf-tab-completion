@@ -148,8 +148,8 @@ _fzf_completion_compadd() {
 
     __opts+=( -i "${IPREFIX}${__ipre[2]}" )
 
-    if [ "${__disp[2]:0:1}" = '(' ]; then
-        eval "__disp=${__disp[2]}"
+    if [[ "${__disp[2]}" =~ '^\(((\\.|[^)])*)\)' ]]; then
+        IFS=$' \t\n\0' read -A __disp <<<"${match[1]}"
     else
         __disp=( "${(@P)__disp[2]}" )
     fi

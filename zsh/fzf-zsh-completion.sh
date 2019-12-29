@@ -73,7 +73,7 @@ fzf_completion() {
                 index="${value[1]}"
                 opts="${__compadd_args[$index]}"
                 value=( "${(Q)value[2]}" )
-                eval "$opts -a value"
+                eval "$opts -U -a value"
             done <<<"$value"
             # insert everything added by fzf
             compstate[insert]=all

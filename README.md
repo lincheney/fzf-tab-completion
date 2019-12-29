@@ -24,7 +24,7 @@ rather than [creating a new mechanism](https://github.com/junegunn/fzf/wiki/Exam
    * `$FZF_DEFAULT_OPTS`
    See also <https://github.com/junegunn/fzf#settings>
 
-### zsh
+## zsh
 
 Add to your `~/.zshrc`:
 ```bash
@@ -47,7 +47,7 @@ zstyle ':completion:*:*:git' fzf-search-display true
 zstyle ':completion:*' fzf-search-display true
 ```
 
-### bash
+## bash
 
 Add to your `~/.bashrc`:
 ```bash
@@ -58,7 +58,7 @@ bind -x '"\t": fzf_bash_completion'
 If you are using a `bash` that is dynamically linked against readline (`LD_PRELOAD= ldd $(which bash)`)
 you may prefer (or not!) to use the [readline](#readline) method instead.
 
-### readline
+## readline
 
 NOTE: This uses a `LD_PRELOAD` hack, is only supported on Linux and only for GNU readline
 (*not* e.g. libedit or other readline alternatives).

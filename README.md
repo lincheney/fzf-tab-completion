@@ -66,7 +66,7 @@ NOTE: This uses a `LD_PRELOAD` hack, is only supported on Linux and only for GNU
 1. Install https://github.com/lincheney/rl_custom_function/
     * consider adding `export LD_PRELOAD=/path/to/librl_custom_function.so` to your `~/.zshrc` or `~/.bashrc`
 1. Run: `cd /path/to/fzf-tab-completion/readline/ && cargo build --release`
-1. Copy/symlink `/path/to/fzf-tab-completion/readline/src/rl_custom_complete` into your `$PATH`
+1. Copy/symlink `/path/to/fzf-tab-completion/readline/bin/rl_custom_complete` into your `$PATH`
 1. Add to your `~/.inputrc`:
 ```
 $include function rl_custom_complete /path/to/fzf-tab-completion/readline/target/release/librl_custom_complete.so

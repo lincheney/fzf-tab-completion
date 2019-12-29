@@ -1,6 +1,6 @@
 # fzf-tab-completion
 
-Tab completion using fzf in zsh, bash, GNU readline apps (e.g. `python`, `irb` etc.)
+Tab completion using fzf in zsh, bash, GNU readline apps (e.g. `python`, `php -a` etc.)
 
 This is distinct from
 [fzf's own implementation for completion](https://github.com/junegunn/fzf#fuzzy-completion-for-bash-and-zsh),

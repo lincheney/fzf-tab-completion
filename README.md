@@ -18,6 +18,11 @@ rather than [creating a new mechanism](https://github.com/junegunn/fzf/wiki/Exam
     * [zsh](#zsh)
     * [bash](#bash)
     * [readline](#readline)
+1. The following environment variables are supported, just as in fzf's "vanilla" completion.
+   * `$FZF_TMUX_HEIGHT`
+   * `$FZF_COMPLETION_OPTS`
+   * `$FZF_DEFAULT_OPTS`
+   See <https://github.com/junegunn/fzf#settings>
 
 #### zsh
 
@@ -28,8 +33,19 @@ bindkey '^I' fzf_completion
 ```
 If you have also enabled fzf's zsh completion, then the `bindkey` line is optional.
 
-> Note that this does not provide `**`-style triggers,
-you need to enable fzf's zsh completion _as well_.
+Note that this does not provide `**`-style triggers,
+you will need to enable fzf's zsh completion _as well_.
+
+##### Searching display strings
+
+By default, display strings are shown but cannot be searched in fzf.
+This is configurable via `zstyle`:
+```bash
+# only for git
+zstyle ':completion:*:*:git' fzf-search-display true
+# or for everything
+zstyle ':completion:*' fzf-search-display true
+```
 
 #### bash
 
@@ -39,12 +55,12 @@ source /path/to/fzf-tab-completion/bash/fzf-bash-completion.sh
 bind -x '"\t": fzf_bash_completion'
 ```
 
-> If you are using a `bash` that is dynamically linked against readline (`LD_PRELOAD= ldd $(which bash)`)
+If you are using a `bash` that is dynamically linked against readline (`LD_PRELOAD= ldd $(which bash)`)
 you may prefer (or not!) to use the [readline](#readline) method instead.
 
 #### readline
 
-> This uses a `LD_PRELOAD` hack and *only* works on Linux.
+NOTE: This uses a `LD_PRELOAD` hack and *only* works on Linux.
 
 1. Install https://github.com/lincheney/rl_custom_function/
     * consider adding `export LD_PRELOAD=/path/to/librl_custom_function.so` to your `~/.zshrc` or `~/.bashrc`
@@ -55,16 +71,17 @@ $include function rl_custom_complete /path/to/fzf-tab-completion/readline/target
 "\t": rl_custom_complete
 ```
 
-## Configuration
-
-The following environment variables are supported, just as in fzf's "vanilla" completion.
-* `$FZF_TMUX_HEIGHT`
-* `$FZF_COMPLETION_OPTS`
-* `$FZF_DEFAULT_OPTS`
-
-See <https://github.com/junegunn/fzf#settings>
+These are the applications that I have seen working:
+* `python2`, `python3`
+* `php -a`
+* `R`
+* `lftp`
+* `irb` (pre ruby 2.7 i.e. before `ruby-reline`)
+* `gdb`
+* `sqlite3`
 
 ## Related projects
 
 * <https://github.com/rockandska/fzf-obc> (fzf tab completion in bash)
 * <https://github.com/Aloxaf/fzf-tab> (fzf tab completion in zsh)
+* <https://github.com/lincheney/rl_custom_isearch> (fzf for history search in all readline applications)

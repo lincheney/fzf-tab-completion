@@ -158,8 +158,8 @@ _fzf_completion_compadd() {
 
     local prefix="${__optskv[-W]:-.}"
     local __disp_str __hit_str __show_str
-    local padding="$(printf %s\\n "${__disp_str[@]}" | awk '{print length}' | sort -nr | head -n1)"
-    padding="$(( padding > COLUMNS ? padding : COLUMNS ))"
+    local padding="$(printf %s\\n "${__disp[@]}" | awk '{print length}' | sort -nr | head -n1)"
+    padding="$(( padding >= COLUMNS ? padding : COLUMNS-1 ))"
 
     for ((i = 1; i <= $#__hits; i++)); do
         __hit_str="${__hits[$i]}"
@@ -189,7 +189,7 @@ _fzf_completion_compadd() {
         fi
 
         # index, value, prefix, show, display
-        printf %s\\n "${__comp_index}${_FZF_COMPLETION_SEP}${(q)__hit_str}${_FZF_COMPLETION_SEP}${__show_str}${_FZF_COMPLETION_SEP}${__disp_str}"
+        printf %s\\n "${__comp_index}${_FZF_COMPLETION_SEP}${(q)__hit_str}${_FZF_COMPLETION_SEP}${__show_str}${_FZF_COMPLETION_SEP}${__disp_str}${_FZF_COMPLETION_SEP}"
     done
     return "$code"
 }

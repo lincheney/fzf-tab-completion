@@ -22,9 +22,9 @@ rather than [creating a new mechanism](https://github.com/junegunn/fzf/wiki/Exam
    * `$FZF_TMUX_HEIGHT`
    * `$FZF_COMPLETION_OPTS`
    * `$FZF_DEFAULT_OPTS`
-   See <https://github.com/junegunn/fzf#settings>
+   See also <https://github.com/junegunn/fzf#settings>
 
-#### zsh
+### zsh
 
 Add to your `~/.zshrc`:
 ```bash
@@ -36,7 +36,7 @@ If you have also enabled fzf's zsh completion, then the `bindkey` line is option
 Note that this does not provide `**`-style triggers,
 you will need to enable fzf's zsh completion _as well_.
 
-##### Searching display strings
+#### Searching display strings
 
 By default, display strings are shown but cannot be searched in fzf.
 This is configurable via `zstyle`:
@@ -47,7 +47,7 @@ zstyle ':completion:*:*:git' fzf-search-display true
 zstyle ':completion:*' fzf-search-display true
 ```
 
-#### bash
+### bash
 
 Add to your `~/.bashrc`:
 ```bash
@@ -58,9 +58,10 @@ bind -x '"\t": fzf_bash_completion'
 If you are using a `bash` that is dynamically linked against readline (`LD_PRELOAD= ldd $(which bash)`)
 you may prefer (or not!) to use the [readline](#readline) method instead.
 
-#### readline
+### readline
 
-NOTE: This uses a `LD_PRELOAD` hack and *only* works on Linux.
+NOTE: This uses a `LD_PRELOAD` hack, is only supported on Linux and only for GNU readline
+(*not* e.g. libedit or other readline alternatives).
 
 1. Install https://github.com/lincheney/rl_custom_function/
     * consider adding `export LD_PRELOAD=/path/to/librl_custom_function.so` to your `~/.zshrc` or `~/.bashrc`

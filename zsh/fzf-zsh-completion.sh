@@ -91,6 +91,8 @@ fzf_completion() {
 
     if [ -n "$stderr" ]; then
         zle -M -- "$stderr"
+    elif (( code == 1 )); then
+        zle -R ' '
     else
         zle -R ' ' ' '
     fi

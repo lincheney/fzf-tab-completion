@@ -173,7 +173,7 @@ _fzf_completion_compadd() {
         if [ -n "$__filenames" -a "$__show_str" = "$__hit_str" -a -d "${prefix}/$__hit_str" ]; then
             __show_str+=/
         fi
-        if [[ "$__show_str" =~ '[^ -~]' ]]; then
+        if [[ "$__show_str" =~ [^[:print:]] ]]; then
             __show_str="${(q)__show_str}"
         fi
 

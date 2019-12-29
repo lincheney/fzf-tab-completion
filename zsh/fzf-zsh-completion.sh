@@ -161,7 +161,7 @@ _fzf_completion_compadd() {
     local prefix="${__optskv[-W]:-.}"
     local __disp_str __hit_str __show_str
     local padding="$(printf %s\\n "${__disp[@]}" | awk '{print length}' | sort -nr | head -n1)"
-    padding="$(( padding >= COLUMNS ? padding : COLUMNS-1 ))"
+    padding="$(( padding==0 ? 0 : padding>COLUMNS ? padding : COLUMNS ))"
 
     for ((i = 1; i <= $#__hits; i++)); do
         __hit_str="${__hits[$i]}"
@@ -171,10 +171,7 @@ _fzf_completion_compadd() {
         if [[ -z "$__disp_str" || "$__disp_str" == "$__hit_str"* ]]; then
             __show_str="${(Q)__hit_str}"
             __disp_str="${__disp_str:${#__hit_str}}"
-            printf -v __disp_str "%-${padding}s" "$__disp_str"
             __disp_str=$'\x1b[37m'"$__disp_str"$'\x1b[0m'
-        else
-            printf -v __disp_str "%-${padding}s" "$__disp_str"
         fi
 
         if [ -n "$__filenames" -a "$__show_str" = "$__hit_str" -a -d "${prefix}/$__hit_str" ]; then
@@ -183,6 +180,8 @@ _fzf_completion_compadd() {
         if [[ "$__show_str" =~ [^[:print:]] ]]; then
             __show_str="${(q)__show_str}"
         fi
+
+        printf -v __disp_str "%-$(( padding > ${#__show_str} ? padding - ${#__show_str} : 0 ))s" "$__disp_str"
 
         if [[ "$__show_str" == "$PREFIX"* ]]; then
             __show_str="${PREFIX}${_FZF_COMPLETION_SEP}${__show_str:${#PREFIX}}"

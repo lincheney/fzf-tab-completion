@@ -78,7 +78,7 @@ These are the applications that I have seen working:
 * `php -a`
 * `R`
 * `lftp`
-* `irb` (pre ruby 2.7 i.e. before `ruby-reline`)
+* `irb --legacy` (the new `irb` in ruby 2.7 uses `ruby-reline` instead of readline)
 * `gdb`
 * `sqlite3`
 

@@ -73,7 +73,7 @@ fzf_completion() {
                 index="${value[1]}"
                 opts="${__compadd_args[$index]}"
                 value=( "${(Q)value[2]}" )
-                eval "$opts -U -a value"
+                eval "$opts -a value"
             done <<<"$value"
             # insert everything added by fzf
             compstate[insert]=all
@@ -136,15 +136,17 @@ _fzf_completion_selector() {
 _fzf_completion_compadd() {
     local __flags=()
     local __OAD=()
-    local __disp __hits
-    zparseopts -D -E -a __opts -A __optskv -- "${^_FZF_COMPLETION_FLAGS[@]}+=__flags" F+: P+: S+: p+: s+: i+: I+: W+: d+:=__disp J+: V+: X+: x+: r+: R+: D+: O+: A+: E+: M+:
+    local __disp __hits __ipre
+    zparseopts -D -E -a __opts -A __optskv -- "${^_FZF_COMPLETION_FLAGS[@]}+=__flags" F+: P+: S+: p+: s+: i+:=__ipre I+: W+: d+:=__disp J+: V+: X+: x+: r+: R+: D+: O+: A+: E+: M+:
     local __filenames="${__flags[(r)-f]}"
 
     if [ -n "${__optskv[(i)-A]}${__optskv[(i)-O]}${__optskv[(i)-D]}" ]; then
         # handle -O -A -D
-        builtin compadd "${__OAD[@]}" "${__flags[@]}" "${__opts[@]}" "$@"
+        builtin compadd "${__OAD[@]}" "${__flags[@]}" "${__opts[@]}" -i "$__ipre" "$@"
         return "$?"
     fi
+
+    __opts+=( -i "${IPREFIX}${__ipre}" )
 
     if [ "${__disp[2]:0:1}" = '(' ]; then
         eval "__disp=${__disp[2]}"
@@ -155,7 +157,7 @@ _fzf_completion_compadd() {
     builtin compadd -Q -A __hits -D __disp "${__flags[@]}" "${__opts[@]}" "$@"
     local code="$?"
     __flags="${(j..)__flags//[ak-]}"
-    printf '__compadd_args+=( %q )\n' "$(printf '%q ' PREFIX="$PREFIX" IPREFIX="$IPREFIX" SUFFIX="$SUFFIX" ISUFFIX="$ISUFFIX" compadd ${__flags:+-$__flags} "${__opts[@]}")" >&"${__evaled}"
+    printf '__compadd_args+=( %q )\n' "$(printf '%q ' PREFIX="$PREFIX" IPREFIX="$IPREFIX" SUFFIX="$SUFFIX" ISUFFIX="$ISUFFIX" compadd ${__flags:+-$__flags} "${__opts[@]}" -U)" >&"${__evaled}"
     (( __comp_index++ ))
 
     local prefix="${__optskv[-W]:-.}"

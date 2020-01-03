@@ -1,6 +1,6 @@
 # set ft=zsh
 
-_FZF_COMPLETION_SEP=$'\x7f'
+_FZF_COMPLETION_SEP=$'\x01'
 _FZF_COMPLETION_FLAGS=( a k f q Q e n U l o 1 2 C )
 
 zmodload zsh/zselect

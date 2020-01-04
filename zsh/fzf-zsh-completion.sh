@@ -89,6 +89,16 @@ fzf_completion() {
             ;;
     esac
 
+    # reset-prompt doesn't work in completion widgets
+    # so call it after this function returns
+    eval "TRAPEXIT() {
+        zle reset-prompt
+        _fzf_completion_post ${(q)stderr} ${(q)code}
+    }"
+}
+
+_fzf_completion_post() {
+    local stderr="$1" code="$2"
     if [ -n "$stderr" ]; then
         zle -M -- "$stderr"
     elif (( code == 1 )); then

@@ -1,7 +1,7 @@
 # set ft=zsh
 
 _FZF_COMPLETION_SEP=$'\x01'
-_FZF_COMPLETION_FLAGS=( a k f q Q e n U l o 1 2 C )
+_FZF_COMPLETION_FLAGS=( a k f q Q e n U l 1 2 C )
 
 zmodload zsh/zselect
 zmodload zsh/system
@@ -147,7 +147,7 @@ _fzf_completion_compadd() {
     local __flags=()
     local __OAD=()
     local __disp __hits __ipre
-    zparseopts -D -E -a __opts -A __optskv -- "${^_FZF_COMPLETION_FLAGS[@]}+=__flags" F+: P+: S+: p+: s+: i:=__ipre I+: W+: d:=__disp J+: V+: X+: x+: r+: R+: D+: O+: A+: E+: M+:
+    zparseopts -D -E -a __opts -A __optskv -- "${^_FZF_COMPLETION_FLAGS[@]}+=__flags" F+: P+: S+: o+: p+: s+: i:=__ipre I+: W+: d:=__disp J+: V+: X+: x+: r+: R+: D+: O+: A+: E+: M+:
     local __filenames="${__flags[(r)-f]}"
 
     if [ -n "${__optskv[(i)-A]}${__optskv[(i)-O]}${__optskv[(i)-D]}" ]; then

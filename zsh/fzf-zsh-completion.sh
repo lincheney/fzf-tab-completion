@@ -152,7 +152,7 @@ _fzf_completion_compadd() {
 
     if [ -n "${__optskv[(i)-A]}${__optskv[(i)-O]}${__optskv[(i)-D]}" ]; then
         # handle -O -A -D
-        builtin compadd "${__OAD[@]}" "${__flags[@]}" "${__opts[@]}" "${__ipre[@]}" "$@"
+        builtin compadd "${__flags[@]}" "${__opts[@]}" "${__ipre[@]}" "$@"
         return "$?"
     fi
 
@@ -165,9 +165,11 @@ _fzf_completion_compadd() {
     builtin compadd -Q -A __hits -D __disp "${__flags[@]}" "${__opts[@]}" "${__ipre[@]}" "$@"
     local code="$?"
     __flags="${(j..)__flags//[ak-]}"
-    # -U ignores $IPREFIX so add it to -i
-    __ipre=( -i "${IPREFIX}${__ipre[2]}" )
-    IPREFIX=
+    if [ -z "${__optskv[(i)-U]}" ]; then
+        # -U ignores $IPREFIX so add it to -i
+        __ipre=( -i "${IPREFIX}${__ipre[2]}" )
+        IPREFIX=
+    fi
     printf '__compadd_args+=( %q )\n' "$(printf '%q ' PREFIX="$PREFIX" IPREFIX="$IPREFIX" SUFFIX="$SUFFIX" ISUFFIX="$ISUFFIX" compadd ${__flags:+-$__flags} "${__opts[@]}" "${__ipre[@]}" -U)" >&"${__evaled}"
     (( __comp_index++ ))
 

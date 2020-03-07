@@ -149,6 +149,7 @@ _fzf_completion_compadd() {
     local __disp __hits __ipre
     zparseopts -D -E -a __opts -A __optskv -- "${^_FZF_COMPLETION_FLAGS[@]}+=__flags" F+: P+: S+: o+: p+: s+: i:=__ipre I+: W+: d:=__disp J+: V+: X+: x+: r+: R+: D+: O+: A+: E+: M+:
     local __filenames="${__flags[(r)-f]}"
+    local __noquote="${__flags[(r)-Q]}"
 
     if [ -n "${__optskv[(i)-A]}${__optskv[(i)-O]}${__optskv[(i)-D]}" ]; then
         # handle -O -A -D
@@ -179,19 +180,31 @@ _fzf_completion_compadd() {
     padding="$(( padding==0 ? 0 : padding>COLUMNS ? padding : COLUMNS ))"
 
     for ((i = 1; i <= $#__hits; i++)); do
+        # actual match
         __hit_str="${__hits[$i]}"
+        # full display string
         __disp_str="${__disp[$i]}"
-        __show_str=
 
-        if [[ -z "$__disp_str" || "$__disp_str" == "$__hit_str"* ]]; then
+        # part of display string containing match
+        if [ -n "$__noquote" ]; then
             __show_str="${(Q)__hit_str}"
-            __disp_str="${__disp_str:${#__hit_str}}"
-            __disp_str=$'\x1b[37m'"$__disp_str"$'\x1b[0m'
+        else
+            __show_str="${__hit_str}"
         fi
 
-        if [ -n "$__filenames" -a "$__show_str" = "$__hit_str" -a -d "${prefix}/$__hit_str" ]; then
+        if [[ -n "$__filenames" && -n "$__show_str" && -d "${prefix}/${__show_str}" ]]; then
             __show_str+=/
         fi
+
+        if [[ -z "$__disp_str" || "$__disp_str" == "$__show_str"* ]]; then
+            # remove prefix from display string
+            __disp_str="${__disp_str:${#__show_str}}"
+            __disp_str=$'\x1b[37m'"$__disp_str"$'\x1b[0m'
+        else
+            # display string does not match, clear it
+            __show_str=
+        fi
+
         if [[ "$__show_str" =~ [^[:print:]] ]]; then
             __show_str="${(q)__show_str}"
         fi

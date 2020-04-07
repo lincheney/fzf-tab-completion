@@ -179,6 +179,7 @@ _fzf_completion_compadd() {
     local padding="$(printf %s\\n "${__disp[@]}" | awk '{print length}' | sort -nr | head -n1)"
     padding="$(( padding==0 ? 0 : padding>COLUMNS ? padding : COLUMNS ))"
 
+    local i
     for ((i = 1; i <= $#__hits; i++)); do
         # actual match
         __hit_str="${__hits[$i]}"

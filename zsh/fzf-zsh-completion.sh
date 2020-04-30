@@ -200,7 +200,6 @@ _fzf_completion_compadd() {
         if [[ -z "$__disp_str" || "$__disp_str" == "$__show_str"* ]]; then
             # remove prefix from display string
             __disp_str="${__disp_str:${#__show_str}}"
-            __disp_str=$'\x1b[37m'"$__disp_str"$'\x1b[0m'
         else
             # display string does not match, clear it
             __show_str=
@@ -208,6 +207,15 @@ _fzf_completion_compadd() {
 
         if [[ "$__show_str" =~ [^[:print:]] ]]; then
             __show_str="${(q)__show_str}"
+        fi
+        if [[ "$__disp_str" =~ [^[:print:]] ]]; then
+            __disp_str="${(q)__disp_str}"
+        fi
+        __disp_str=$'\x1b[37m'"$__disp_str"$'\x1b[0m'
+        # use display as fallback
+        if [[ -z "$__show_str" ]]; then
+            __show_str="$__disp_str"
+            __disp_str=
         fi
 
         printf -v __disp_str "%-$(( padding > ${#__show_str} ? padding - ${#__show_str} : 0 ))s" "$__disp_str"

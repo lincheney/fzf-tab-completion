@@ -7,7 +7,11 @@ This is distinct from
 in that it works _with_ the existing completion mechanisms
 rather than [creating a new mechanism](https://github.com/junegunn/fzf/wiki/Examples-(completion)).
 
+## Example
+<details><summary>Click here to show screencast</summary>
+
 ![Example](./example.svg)
+</details>
 
 ## Installation
 

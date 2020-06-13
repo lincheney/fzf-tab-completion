@@ -114,7 +114,7 @@ _fzf_completion_selector() {
     while (( ${#lines[@]} < 2 )); do
         zselect -r 0 "$tty"
         if (( reply[2] == 0 )); then
-            if read -r; then
+            if IFS= read -r; then
                 lines+=( "$REPLY" )
             elif (( ${#lines[@]} == 1 )); then # only one input
                 printf %s\\n "${lines[1]}" && return

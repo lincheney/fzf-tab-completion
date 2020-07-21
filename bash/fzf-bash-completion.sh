@@ -242,7 +242,7 @@ fzf_bash_completer() {
     if [ "$code" = 0 ]; then
         readarray -t COMPREPLY < <(
             if [ "$compl_noquote" != 1 -a "$compl_filenames" = 1 ]; then
-                while read -r line; do
+                while IFS= read -r line; do
                     if [ "$line" = "$2" ]; then
                         echo "$line"
                     # never quote the prefix
@@ -361,7 +361,7 @@ _fzf_bash_completion_complete() {
             echo
         ) | _fzf_bash_completion_apply_xfilter "$compl_xfilter" \
           | _fzf_bash_completion_unbuffered_awk '$0!=""' 'sub(find, replace)' -vfind='.*' -vreplace="${compl_prefix}&${compl_suffix}" \
-          | if read -r line; then
+          | if IFS= read -r line; then
                 echo "$line"; cat
             else
                 local compgen_opts=()
@@ -395,7 +395,7 @@ _fzf_bash_completion_apply_xfilter() {
 }
 
 _fzf_bash_completion_dir_marker() {
-    while read -r line; do
+    while IFS= read -r line; do
         # adapted from __expand_tilde_by_ref
         if [[ "$line" == \~*/* ]]; then
             eval expanded="${line/%\/*}"/'${line#*/}';

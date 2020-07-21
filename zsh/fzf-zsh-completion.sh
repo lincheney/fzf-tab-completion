@@ -114,7 +114,7 @@ _fzf_completion_selector() {
     while (( ${#lines[@]} < 2 )); do
         zselect -r 0 "$tty"
         if (( reply[2] == 0 )); then
-            if read -r; then
+            if IFS= read -r; then
                 lines+=( "$REPLY" )
             elif (( ${#lines[@]} == 1 )); then # only one input
                 printf %s\\n "${lines[1]}" && return
@@ -218,7 +218,8 @@ _fzf_completion_compadd() {
             __disp_str=
         fi
 
-        printf -v __disp_str "%-$(( padding > ${#__show_str} ? padding - ${#__show_str} : 0 ))s" "$__disp_str"
+        # pad out so that e.g. short flags with long display strings are not penalised
+        printf -v __disp_str "%-${padding}s" "$__disp_str"
 
         if [[ "$__show_str" == "$PREFIX"* ]]; then
             __show_str="${PREFIX}${_FZF_COMPLETION_SEP}${__show_str:${#PREFIX}}"

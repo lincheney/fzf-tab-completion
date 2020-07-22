@@ -72,10 +72,19 @@ NOTE: This uses a `LD_PRELOAD` hack, is only supported on Linux and only for GNU
 1. Run: `cd /path/to/fzf-tab-completion/readline/ && cargo build --release`
 1. Copy/symlink `/path/to/fzf-tab-completion/readline/bin/rl_custom_complete` into your `$PATH`
 1. Add to your `~/.inputrc`:
-```
-$include function rl_custom_complete /path/to/fzf-tab-completion/readline/target/release/librl_custom_complete.so
-"\t": rl_custom_complete
-```
+   ```
+   $include function rl_custom_complete /path/to/fzf-tab-completion/readline/target/release/librl_custom_complete.so
+   "\t": rl_custom_complete
+   ```
+1. Run something interactive that uses readline, e.g. python:
+   ```bash
+   LD_PRELOAD=target/release/librl_custom_function.so python
+   ```
+1. To apply this all applications more permanently,
+   you will need to set `LD_PRELOAD` somewhere like `/etc/environment` or `~/.pam_environment`.
+   * NOTE: if you set `LD_PRELOAD` in your `.bashrc`, or similar, it will affect applications run _from_ `bash`
+      but not the parent `bash` process itself.
+   * See also: [link](https://wiki.archlinux.org/index.php/Environment_variables#Per_user)
 
 These are the applications that I have seen working:
 * `python2`, `python3`

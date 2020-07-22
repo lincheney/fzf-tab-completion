@@ -68,7 +68,6 @@ NOTE: This uses a `LD_PRELOAD` hack, is only supported on Linux and only for GNU
 (*not* e.g. libedit or other readline alternatives).
 
 1. Install https://github.com/lincheney/rl_custom_function/
-    * consider adding `export LD_PRELOAD=/path/to/librl_custom_function.so` to your `~/.zshrc` or `~/.bashrc`
 1. Run: `cd /path/to/fzf-tab-completion/readline/ && cargo build --release`
 1. Copy/symlink `/path/to/fzf-tab-completion/readline/bin/rl_custom_complete` into your `$PATH`
 1. Add to your `~/.inputrc`:
@@ -78,7 +77,7 @@ NOTE: This uses a `LD_PRELOAD` hack, is only supported on Linux and only for GNU
    ```
 1. Run something interactive that uses readline, e.g. python:
    ```bash
-   LD_PRELOAD=target/release/librl_custom_function.so python
+   LD_PRELOAD=/path/to/librl_custom_function.so python
    ```
 1. To apply this all applications more permanently,
    you will need to set `LD_PRELOAD` somewhere like `/etc/environment` or `~/.pam_environment`.

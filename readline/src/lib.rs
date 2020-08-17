@@ -80,9 +80,9 @@ mod readline {
     }
 
     pub fn get_readline_name() -> ::DynlibResult<Option<&'static str>> {
-        match lib::rl_readline_name.as_ref() {
-            Ok(n) if n.ptr().is_null() => Ok(None),
-            Ok(n) => Ok(unsafe{ CStr::from_ptr(n.ptr() as _) }.to_str().ok()),
+        match lib::rl_readline_name.map(|n| n.ptr()) {
+            Ok(p) if p.is_null() || unsafe{*p}.ptr().is_null() => Ok(None),
+            Ok(p) => Ok(unsafe{ CStr::from_ptr((*p).ptr()) }.to_str().ok()),
             Err(e) => Err(e)
         }
     }

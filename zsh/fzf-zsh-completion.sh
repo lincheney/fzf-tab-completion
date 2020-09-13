@@ -70,9 +70,9 @@ fzf_completion() {
         0)
             local opts index
             while IFS="$_FZF_COMPLETION_SEP" read -r -A value; do
-                index="${value[2]}"
+                index="${value[3]}"
                 opts="${__compadd_args[$index]}"
-                value=( "${(Q)value[1]}" )
+                value=( "${(Q)value[2]}" )
                 eval "$opts -a value"
             done <<<"$value"
             # insert everything added by fzf
@@ -144,7 +144,7 @@ _fzf_completion_selector() {
 
     tput cud1 >/dev/tty # fzf clears the line on exit so move down one
     FZF_DEFAULT_OPTS="--height ${FZF_TMUX_HEIGHT:-40%} --reverse $FZF_DEFAULT_OPTS $FZF_COMPLETION_OPTS" \
-        $(__fzfcmd) --ansi --prompt "> $PREFIX" -d "$_FZF_COMPLETION_SEP" --with-nth 3..5 --nth "$field" "${flags[@]}" \
+        $(__fzfcmd) --ansi --prompt "> $PREFIX" -d "$_FZF_COMPLETION_SEP" --with-nth 4..6 --nth "$field" "${flags[@]}" \
         < <(printf %s\\n "${lines[@]}"; cat)
     code="$?"
     tput cuu1 >/dev/tty
@@ -154,8 +154,8 @@ _fzf_completion_selector() {
 _fzf_completion_compadd() {
     local __flags=()
     local __OAD=()
-    local __disp __hits __ipre
-    zparseopts -D -E -a __opts -A __optskv -- "${^_FZF_COMPLETION_FLAGS[@]}+=__flags" F+: P+: S+: o+: p+: s+: i:=__ipre I+: W+: d:=__disp J+: V+: X+: x+: r+: R+: D+: O+: A+: E+: M+:
+    local __disp __hits __ipre __apre __hpre __hsuf __asuf __isuf
+    zparseopts -D -E -a __opts -A __optskv -- "${^_FZF_COMPLETION_FLAGS[@]}+=__flags" F+: P:=__apre S:=__asuf o+: p:=__hpre s:=__hsuf i:=__ipre I:=__isuf W+: d:=__disp J+: V+: X+: x+: r+: R+: D+: O+: A+: E+: M+:
     local __filenames="${__flags[(r)-f]}"
     local __noquote="${__flags[(r)-Q]}"
 
@@ -171,21 +171,25 @@ _fzf_completion_compadd() {
         __disp=( "${(@P)__disp[2]}" )
     fi
 
-    builtin compadd -Q -A __hits -D __disp "${__flags[@]}" "${__opts[@]}" "${__ipre[@]}" "$@"
+    builtin compadd -Q -A __hits -D __disp "${__flags[@]}" "${__opts[@]}" "${__ipre[@]}" "${__apre[@]}" "${__hpre[@]}" "${__hsuf[@]}" "${__asuf[@]}" "${__isuf[@]}" "$@"
     local code="$?"
     __flags="${(j..)__flags//[ak-]}"
     if [ -z "${__optskv[(i)-U]}" ]; then
         # -U ignores $IPREFIX so add it to -i
-        __ipre=( -i "${IPREFIX}${__ipre[2]}" )
+        __ipre[2]="${IPREFIX}${__ipre[2]}"
+        __ipre=( -i "${__ipre[2]}" )
         IPREFIX=
     fi
-    printf '__compadd_args+=( %q )\n' "$(printf '%q ' PREFIX="$PREFIX" IPREFIX="$IPREFIX" SUFFIX="$SUFFIX" ISUFFIX="$ISUFFIX" compadd ${__flags:+-$__flags} "${__opts[@]}" "${__ipre[@]}" -U)" >&"${__evaled}"
+    printf '__compadd_args+=( %q )\n' "$(printf '%q ' PREFIX="$PREFIX" IPREFIX="$IPREFIX" SUFFIX="$SUFFIX" ISUFFIX="$ISUFFIX" compadd ${__flags:+-$__flags} "${__opts[@]}" "${__ipre[@]}" "${__apre[@]}" "${__hpre[@]}" "${__hsuf[@]}" "${__asuf[@]}" "${__isuf[@]}" -U)" >&"${__evaled}"
     (( __comp_index++ ))
 
-    local prefix="${__optskv[-W]:-.}"
-    local __disp_str __hit_str __show_str
+    local file_prefix="${__optskv[-W]:-.}"
+    local __disp_str __hit_str __show_str __real_str
     local padding="$(printf %s\\n "${__disp[@]}" | awk '{print length}' | sort -nr | head -n1)"
     padding="$(( padding==0 ? 0 : padding>COLUMNS ? padding : COLUMNS ))"
+
+    local prefix="${IPREFIX}${__ipre[2]}${__apre[2]}${__hpre[2]}"
+    local suffix="${__hsuf[2]}${__asuf[2]}${__isuf[2]}"
 
     local i
     for ((i = 1; i <= $#__hits; i++)); do
@@ -200,8 +204,9 @@ _fzf_completion_compadd() {
         else
             __show_str="${__hit_str}"
         fi
+        __real_str="${__show_str}"
 
-        if [[ -n "$__filenames" && -n "$__show_str" && -d "${prefix}/${__show_str}" ]]; then
+        if [[ -n "$__filenames" && -n "$__show_str" && -d "${file_prefix}/${__show_str}" ]]; then
             __show_str+=/
         fi
 
@@ -235,8 +240,8 @@ _fzf_completion_compadd() {
             __show_str="${_FZF_COMPLETION_SEP}$__show_str"
         fi
 
-        # value, index, prefix, show, display
-        printf %s\\n "${(q)__hit_str}${_FZF_COMPLETION_SEP}${__comp_index}${_FZF_COMPLETION_SEP}${__show_str}${_FZF_COMPLETION_SEP}${__disp_str}"
+        # fullvalue, value, index, prefix, show, display
+        printf %s\\n "${prefix}${__real_str}${suffix}${_FZF_COMPLETION_SEP}${(q)__hit_str}${_FZF_COMPLETION_SEP}${__comp_index}${_FZF_COMPLETION_SEP}${__show_str}${_FZF_COMPLETION_SEP}${__disp_str}"
     done
     return "$code"
 }

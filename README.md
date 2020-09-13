@@ -64,6 +64,9 @@ Use `{1}` for the selected text (or `{+1}` if using multi-select).
 # basic file preview for ls (you can replace with something more sophisticated than head)
 zstyle ':completion::*:ls::*' fzf-completion-opts --preview='head {1}'
 
+# preview when completing env vars (note: only works for exported variables)
+zstyle ':completion::*:-parameter-:*' fzf-completion-opts --preview='printenv {1}'
+
 # preview a `git status` when completing git commands
 zstyle ':completion::*:git::*' fzf-completion-opts --preview='git -c color.status=always status --short'
 

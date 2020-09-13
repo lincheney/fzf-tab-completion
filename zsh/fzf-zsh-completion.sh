@@ -130,7 +130,7 @@ _fzf_completion_selector() {
     local context field=2
     context="${compstate[context]//-/-}"
     context="${context:+-$context-}"
-    if [ "$context" = -command- -a -n "${words[1]}" ]; then
+    if [ "$context" = -command- -a "$CURRENT" -gt 1 ]; then
         context="${words[1]}"
     fi
     context=":completion::complete:${context:-*}::${(j-,-)words[@]}"

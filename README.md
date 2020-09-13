@@ -68,7 +68,7 @@ Use `{1}` for the selected text (or `{+1}` if using multi-select).
 zstyle ':completion::*:ls::*' fzf-completion-opts --preview='head {1}'
 
 # preview when completing env vars (note: only works for exported variables)
-zstyle ':completion::*:(-command-|-parameter-|export|unset):*' fzf-completion-opts --preview='printenv {1}'
+zstyle ':completion::*:(-command-|-parameter-|-brace-parameter-|export|unset|expand):*' fzf-completion-opts --preview='eval echo {1}'
 
 # preview a `git status` when completing git add
 zstyle ':completion::*:git::git,add,*' fzf-completion-opts --preview='git -c color.status=always status --short'

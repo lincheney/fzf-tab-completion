@@ -67,8 +67,8 @@ zstyle ':completion::*:ls::*' fzf-completion-opts --preview='head {1}'
 # preview when completing env vars (note: only works for exported variables)
 zstyle ':completion::*:-parameter-:*' fzf-completion-opts --preview='printenv {1}'
 
-# preview a `git status` when completing git commands
-zstyle ':completion::*:git::*' fzf-completion-opts --preview='git -c color.status=always status --short'
+# preview a `git status` when completing git add
+zstyle ':completion::*:git::git,add,*' fzf-completion-opts --preview='git -c color.status=always status --short'
 
 # but if a subcommand is given, show a git diff or git log
 zstyle ':completion::*:git::*,[a-z]*' fzf-completion-opts --preview='

@@ -75,7 +75,7 @@ zstyle ':completion::*:git::git,add,*' fzf-completion-opts --preview='git -c col
 
 # if other subcommand to git is given, show a git diff or git log
 zstyle ':completion::*:git::*,[a-z]*' fzf-completion-opts --preview='
-for arg in $(eval echo {+1}); do  # git completion quotes the matches for some reason
+for arg in {+1}; do
     { git diff --color=always -- "$arg" | git log --color=always "$arg" } 2>/dev/null
 done'
 ```

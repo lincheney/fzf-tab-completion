@@ -65,12 +65,12 @@ Use `{1}` for the selected text (or `{+1}` if using multi-select).
 zstyle ':completion::*:ls::*' fzf-completion-opts --preview='head {1}'
 
 # preview when completing env vars (note: only works for exported variables)
-zstyle ':completion::*:-parameter-:*' fzf-completion-opts --preview='printenv {1}'
+zstyle ':completion::*:(-parameter-|export|unset):*' fzf-completion-opts --preview='printenv {1}'
 
 # preview a `git status` when completing git add
 zstyle ':completion::*:git::git,add,*' fzf-completion-opts --preview='git -c color.status=always status --short'
 
-# but if a subcommand is given, show a git diff or git log
+# if other subcommand to git is given, show a git diff or git log
 zstyle ':completion::*:git::*,[a-z]*' fzf-completion-opts --preview='
 for arg in $(eval echo {+1}); do  # git completion quotes the matches for some reason
     { git diff --color=always -- "$arg" | git log --color=always "$arg" } 2>/dev/null

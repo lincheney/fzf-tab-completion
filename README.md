@@ -23,11 +23,13 @@ rather than [creating a new mechanism](https://github.com/junegunn/fzf/wiki/Exam
     * [bash](#bash)
     * [readline](#readline)
 1. The following environment variables are supported, just as in fzf's "vanilla" completion.
-   * `$FZF_TMUX_HEIGHT`
-   * `$FZF_COMPLETION_OPTS`
-   * `$FZF_DEFAULT_OPTS` 
-   See also <https://github.com/junegunn/fzf#settings>
-   Avoid changing these `fzf` flags: `-n`, `--nth`, `--with-nth`, `-d`
+    * `$FZF_TMUX_HEIGHT`
+    * `$FZF_COMPLETION_OPTS`
+    * `$FZF_DEFAULT_OPTS`
+
+    See also <https://github.com/junegunn/fzf#settings>
+
+    Avoid changing these `fzf` flags: `-n`, `--nth`, `--with-nth`, `-d`
 
 ## zsh
 

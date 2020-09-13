@@ -133,7 +133,7 @@ _fzf_completion_selector() {
     if [ "$context" = -command- -a -n "${words[1]}" ]; then
         context="${words[1]}"
     fi
-    context=":completion::complete:${context:-*}::${(j-,-)words[@]:0:-1}-"
+    context=":completion::complete:${context:-*}::${(j-,-)words[@]}"
 
     if zstyle -t "$context" fzf-search-display; then
         field=2..5

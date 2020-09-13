@@ -128,7 +128,7 @@ _fzf_completion_selector() {
     done
 
     local context field=2
-    context="${compstate[context]//-/-}"
+    context="${compstate[context]//_/-}"
     context="${context:+-$context-}"
     if [ "$context" = -command- -a "$CURRENT" -gt 1 ]; then
         context="${words[1]}"
@@ -158,6 +158,7 @@ _fzf_completion_compadd() {
     zparseopts -D -E -a __opts -A __optskv -- "${^_FZF_COMPLETION_FLAGS[@]}+=__flags" F+: P:=__apre S:=__asuf o+: p:=__hpre s:=__hsuf i:=__ipre I:=__isuf W+: d:=__disp J+: V+: X+: x+: r+: R+: D+: O+: A+: E+: M+:
     local __filenames="${__flags[(r)-f]}"
     local __noquote="${__flags[(r)-Q]}"
+    local __is_param="${__flags[(r)-e]}"
 
     if [ -n "${__optskv[(i)-A]}${__optskv[(i)-O]}${__optskv[(i)-D]}" ]; then
         # handle -O -A -D
@@ -190,6 +191,9 @@ _fzf_completion_compadd() {
 
     local prefix="${IPREFIX}${__ipre[2]}${__apre[2]}${__hpre[2]}"
     local suffix="${__hsuf[2]}${__asuf[2]}${__isuf[2]}"
+    if [ -n "$__is_param" -a "$prefix" = '${' -a -z "$suffix" ]; then
+        suffix+=}
+    fi
 
     local i
     for ((i = 1; i <= $#__hits; i++)); do

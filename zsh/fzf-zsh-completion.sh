@@ -56,7 +56,7 @@ fzf_completion() {
                     <<<"$autoloads" fgrep -xv "$(functions -u +)" | sed 's/^/builtin autoload +XUz /' >&"${__evaled}"
                 )"
                 printf %s\\n "stderr=${(q)stderr}" >&"${__evaled}"
-            ) | awk -F"$_FZF_COMPLETION_SEP" '$2!="" && !x[$2]++ { print $0; system("") }'
+            ) | awk -F"$_FZF_COMPLETION_SEP" '$1!="" && !x[$1]++ { print $0; system("") }'
         )
         coproc_pid="$!"
         value="$(_fzf_completion_selector <&p)"
@@ -70,9 +70,9 @@ fzf_completion() {
         0)
             local opts index
             while IFS="$_FZF_COMPLETION_SEP" read -r -A value; do
-                index="${value[1]}"
+                index="${value[2]}"
                 opts="${__compadd_args[$index]}"
-                value=( "${(Q)value[2]}" )
+                value=( "${(Q)value[1]}" )
                 eval "$opts -a value"
             done <<<"$value"
             # insert everything added by fzf
@@ -133,13 +133,18 @@ _fzf_completion_selector() {
     if [ "$context" = -command- -a -n "${words[1]}" ]; then
         context="${words[1]}"
     fi
-    if zstyle -t ":completion::complete:${context:-*}::" fzf-search-display; then
+    context=":completion::complete:${context:-*}::${(j-,-)words[@]:0:-1}-"
+
+    if zstyle -t "$context" fzf-search-display; then
         field=2..5
     fi
 
+    local flags=()
+    zstyle -a "$context" fzf-completion-opts flags
+
     tput cud1 >/dev/tty # fzf clears the line on exit so move down one
     FZF_DEFAULT_OPTS="--height ${FZF_TMUX_HEIGHT:-40%} --reverse $FZF_DEFAULT_OPTS $FZF_COMPLETION_OPTS" \
-        $(__fzfcmd) --ansi --prompt "> $PREFIX" -d "$_FZF_COMPLETION_SEP" --with-nth 3..5 --nth "$field" \
+        $(__fzfcmd) --ansi --prompt "> $PREFIX" -d "$_FZF_COMPLETION_SEP" --with-nth 3..5 --nth "$field" "${flags[@]}" \
         < <(printf %s\\n "${lines[@]}"; cat)
     code="$?"
     tput cuu1 >/dev/tty
@@ -230,8 +235,8 @@ _fzf_completion_compadd() {
             __show_str="${_FZF_COMPLETION_SEP}$__show_str"
         fi
 
-        # index, value, prefix, show, display
-        printf %s\\n "${__comp_index}${_FZF_COMPLETION_SEP}${(q)__hit_str}${_FZF_COMPLETION_SEP}${__show_str}${_FZF_COMPLETION_SEP}${__disp_str}${_FZF_COMPLETION_SEP}"
+        # value, index, prefix, show, display
+        printf %s\\n "${(q)__hit_str}${_FZF_COMPLETION_SEP}${__comp_index}${_FZF_COMPLETION_SEP}${__show_str}${_FZF_COMPLETION_SEP}${__disp_str}"
     done
     return "$code"
 }

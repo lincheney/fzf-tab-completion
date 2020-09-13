@@ -46,9 +46,32 @@ By default, display strings are shown but cannot be searched in fzf.
 This is configurable via `zstyle`:
 ```bash
 # only for git
-zstyle ':completion:*:*:git' fzf-search-display true
+zstyle ':completion:*:*:git:*' fzf-search-display true
 # or for everything
 zstyle ':completion:*' fzf-search-display true
+```
+
+#### Specifying custom fzf options
+
+You can specify custom `fzf` options with the `fzf-completion-opts` style.
+This allows you to have different options based on the command being completed
+(as opposed to the `$FZF_DEFAULT_OPTS` etc environment variables which are global).
+
+This is most useful for changing the `--preview` option.
+Use `{1}` for the selected text (or `{+1}` if using multi-select).
+
+```bash
+# basic file preview for ls (you can replace with something more sophisticated than head)
+zstyle ':completion::*:ls::*' fzf-completion-opts --preview='head {1}'
+
+# preview a `git status` when completing git commands
+zstyle ':completion::*:git::*' fzf-completion-opts --preview='git -c color.status=always status --short'
+
+# but if a subcommand is given, show a git diff or git log
+zstyle ':completion::*:git::*,[a-z]*' fzf-completion-opts --preview='
+for arg in $(eval echo {+1}); do
+    { git diff --color=always -- "$arg" | git log --color=always "$arg" } 2>/dev/null
+done'
 ```
 
 ## bash

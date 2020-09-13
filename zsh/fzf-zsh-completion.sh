@@ -129,8 +129,11 @@ _fzf_completion_selector() {
 
     local context field=2
     context="${compstate[context]//-/-}"
-    context="${context:=-$context-}"
-    if zstyle -t ":completion:${context:-*}:*:${words[1]}" fzf-search-display; then
+    context="${context:+-$context-}"
+    if [ "$context" = -command- -a -n "${words[1]}" ]; then
+        context="${words[1]}"
+    fi
+    if zstyle -t ":completion::complete:${context:-*}::" fzf-search-display; then
         field=2..5
     fi
 

@@ -96,7 +96,6 @@ you may prefer (or not!) to use the [readline](#readline) method instead.
 NOTE: This uses a `LD_PRELOAD` hack, is only supported on Linux and only for GNU readline
 (*not* e.g. libedit or other readline alternatives).
 
-1. Install https://github.com/lincheney/rl_custom_function/
 1. Run: `cd /path/to/fzf-tab-completion/readline/ && cargo build --release`
 1. Copy/symlink `/path/to/fzf-tab-completion/readline/bin/rl_custom_complete` into your `$PATH`
 1. Add to your `~/.inputrc`:
@@ -104,6 +103,8 @@ NOTE: This uses a `LD_PRELOAD` hack, is only supported on Linux and only for GNU
    $include function rl_custom_complete /path/to/fzf-tab-completion/readline/target/release/librl_custom_complete.so
    "\t": rl_custom_complete
    ```
+1. Build https://github.com/lincheney/rl_custom_function/
+   * this should produce a file `librl_custom_function.so` which you will use with `LD_PRELOAD` in the next step.
 1. Run something interactive that uses readline, e.g. python:
    ```bash
    LD_PRELOAD=/path/to/librl_custom_function.so python

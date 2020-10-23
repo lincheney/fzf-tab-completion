@@ -105,7 +105,7 @@ _fzf_bash_completion_parse_line() {
 }
 
 fzf_bash_completion() {
-    printf 'Loading matches ...\r'
+    printf '%s\r' "${FZF_BASH_WIPSTR:-"Loading matches ..."}"
 
     local COMP_WORDS COMP_CWORD COMP_POINT COMP_LINE
     local line="${READLINE_LINE:0:READLINE_POINT}"
@@ -141,6 +141,7 @@ fzf_bash_completion() {
     fi
 
     printf '\r'
+    command tput el 2>/dev/null || echo -ne "\033[K"
 }
 
 _fzf_bash_completion_selector() {

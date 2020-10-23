@@ -144,8 +144,14 @@ fzf_bash_completion() {
 }
 
 _fzf_bash_completion_selector() {
+    local cmd
+    if [[ -n $FZF_BASH_TMUX ]]; then
+        cmd="fzf-tmux --"
+    else
+        cmd="fzf"
+    fi
     FZF_DEFAULT_OPTS="--height ${FZF_TMUX_HEIGHT:-40%} --reverse $FZF_DEFAULT_OPTS $FZF_COMPLETION_OPTS" \
-        fzf -1 -0 --prompt "> $line" --nth 2 -d "$_FZF_COMPLETION_SEP" \
+        $cmd -1 -0 --prompt "> $line" --nth 2 -d "$_FZF_COMPLETION_SEP" \
     | tr -d "$_FZF_COMPLETION_SEP"
 }
 

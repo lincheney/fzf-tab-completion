@@ -266,7 +266,13 @@ fzf_bash_completer() {
 
 _fzf_bash_completion_complete() {
     local compgen_actions=()
-    local compspec="$(complete -p "$1" 2>/dev/null || complete -p '')"
+    if [[ $1 =~ ^- ]]; then
+        # Don't actually use complete with something that will be
+        # interpreted as an argument to complete. Just fake it.
+        local compspec="$(complete -p '') $1"
+    else
+        local compspec="$(complete -p "$1" 2>/dev/null || { complete -p ''; echo "$1"; })"
+    fi
 
     eval "compspec=( $compspec )"
     set -- "${compspec[@]}" "$@"

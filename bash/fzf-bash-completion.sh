@@ -9,7 +9,7 @@ _fzf_bash_completion_egrep="$(command -v rg || command -v ag || echo egrep)"
 
 _fzf_bash_completion_shell_split() {
     "$_fzf_bash_completion_egrep" -o \
-        -e ';|\(|\)|\{|\}|&|\||:' \
+        -e '[;(){}&\|:]' \
         -e '\|+|&+' \
         -e "(\\\\.|[^\"'[:space:];:(){}&\\|])+" \
         -e "\\\$'(\\\\.|[^'])*('|$)" \

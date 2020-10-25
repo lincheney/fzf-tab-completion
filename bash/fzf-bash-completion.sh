@@ -74,13 +74,13 @@ _fzf_bash_completion_parse_dq() {
             shell="$_shell"
 
             # found a subshell
-            split="$(<<<"$shell" shell_split)"
-            if ! split="$(parse_dq "$split")"; then
+            split="$(<<<"$shell" _fzf_bash_completion_shell_split)"
+            if ! split="$(_fzf_bash_completion_parse_dq "$split")"; then
                 # bubble up
                 echo "$split"
                 return 1
             fi
-            if ! num="$(find_matching_bracket ')' <<<"$split")"; then
+            if ! num="$(_fzf_bash_completion_find_matching_bracket ')' <<<"$split")"; then
                 # subshell not closed, this is it
                 echo "$split"
                 return 1

@@ -75,7 +75,7 @@ _fzf_bash_completion_parse_dq() {
 
             # found a subshell
             split="$(<<<"$shell" _fzf_bash_completion_shell_split)"
-            if ! split="$(_fzf_bash_completion_parse_dq "$split")"; then
+            if ! split="$(_fzf_bash_completion_parse_dq <<<"$split")"; then
                 # bubble up
                 echo "$split"
                 return 1

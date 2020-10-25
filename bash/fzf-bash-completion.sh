@@ -120,7 +120,9 @@ fzf_bash_completion() {
     COMP_LINE="${COMP_WORDS[*]}"
     COMP_POINT="${#COMP_LINE}"
 
-    _fzf_bash_completion_expand_alias "${COMP_WORDS[0]}"
+    if [[ ${#COMP_WORDS[@]} -gt 1 ]]; then
+        _fzf_bash_completion_expand_alias "${COMP_WORDS[0]}"
+    fi
     local cmd="${COMP_WORDS[0]}"
     local prev
     if [ "$COMP_CWORD" = 0 ]; then

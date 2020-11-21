@@ -43,6 +43,11 @@ If you have also enabled fzf's zsh completion, then the `bindkey` line is option
 Note that this does not provide `**`-style triggers,
 you will need to enable fzf's zsh completion _as well_.
 
+#### tmux
+
+`$FZF_TMUX_OPTS` is respected same as in [fzf](https://github.com/junegunn/fzf#key-bindings-for-command-line)
+however you must have fzf's keybindings enabled as well.
+
 #### Searching display strings
 
 By default, display strings are shown but cannot be searched in fzf.
@@ -91,7 +96,12 @@ bind -x '"\t": fzf_bash_completion'
 If you are using a `bash` that is dynamically linked against readline (`LD_PRELOAD= ldd $(which bash)`)
 you may prefer (or not!) to use the [readline](#readline) method instead.
 
-### Custom loading message
+#### tmux
+
+`$FZF_TMUX_OPTS` is respected same as in [fzf](https://github.com/junegunn/fzf#key-bindings-for-command-line)
+however you must have fzf's keybindings enabled as well.
+
+#### Custom loading message
 
 `bash` clears the prompt and input line before running the completion,
 so a loading message is printed instead.

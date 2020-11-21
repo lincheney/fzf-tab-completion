@@ -91,6 +91,19 @@ bind -x '"\t": fzf_bash_completion'
 If you are using a `bash` that is dynamically linked against readline (`LD_PRELOAD= ldd $(which bash)`)
 you may prefer (or not!) to use the [readline](#readline) method instead.
 
+### Custom loading message
+
+`bash` clears the prompt and input line before running the completion,
+so a loading message is printed instead.
+
+You can customise the message by overriding the `_fzf_bash_completion_loading_msg()` function.
+
+For example the following "re-prints" the prompt and input line
+to make this less jarring (note this may or may not work, and there is always some unavoidable flicker):
+```bash
+_fzf_bash_completion_loading_msg() { echo "${PS1@P}${READLINE_LINE}" | tail -n1; }
+```
+
 ## readline
 
 NOTE: This uses a `LD_PRELOAD` hack, is only supported on Linux and only for GNU readline

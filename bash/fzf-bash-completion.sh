@@ -104,8 +104,15 @@ _fzf_bash_completion_parse_line() {
         | tr \\0 \\n
 }
 
+_fzf_bash_completion_loading_msg() {
+    echo 'Loading matches ...'
+}
+
 fzf_bash_completion() {
-    printf '%s\r' "${FZF_BASH_WIPSTR-"Loading matches ..."}"
+    printf '\r'
+    command tput sc 2>/dev/null || echo -ne "\0337"
+    printf '%s' "$(_fzf_bash_completion_loading_msg)"
+    command tput rc 2>/dev/null || echo -ne "\0338"
 
     local COMP_WORDS COMP_CWORD COMP_POINT COMP_LINE
     local line="${READLINE_LINE:0:READLINE_POINT}"

@@ -70,7 +70,6 @@ _fzf_bash_completion_parse_dq() {
         while true; do
             # we are in a double quoted string
             _shell="$(<<<"$shell" sed -r 's/^(\\.|[^"$])*\$\(//')"
-            echo "$_shell" >/dev/tty
 
             if [ "$shell" = "$_shell" ]; then
                 # no subshells

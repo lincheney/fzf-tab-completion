@@ -99,7 +99,8 @@ so a loading message is printed instead.
 You can customise the message by overriding the `_fzf_bash_completion_loading_msg()` function.
 
 For example the following "re-prints" the prompt and input line
-to make this less jarring (note this may or may not work, and there is always some unavoidable flicker):
+to make this less jarring
+(note this may or may not work, there's no detection of `$PS2` and there is always some unavoidable flicker):
 ```bash
 _fzf_bash_completion_loading_msg() { echo "${PS1@P}${READLINE_LINE}" | tail -n1; }
 ```

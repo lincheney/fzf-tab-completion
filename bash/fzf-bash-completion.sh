@@ -1,7 +1,7 @@
 _FZF_COMPLETION_SEP=$'\x7f'
 
 _fzf_bash_completion_awk_escape() {
-    sed 's/[[\*^$]/\\&/g' <<<"$1"
+    sed 's/\\/\\\\\\\\/g; s/[[*^$.]/\\\\&/g' <<<"$1"
 }
 
 # shell parsing stuff
@@ -401,7 +401,7 @@ _fzf_bash_completion_complete() {
             compgen -o dirnames -- "$2"
         fi
     ) \
-    | _fzf_bash_completion_unbuffered_awk '' 'sub(find, replace)' -vfind="^$(_fzf_bash_completion_awk_escape "$2")" -vreplace="$(_fzf_bash_completion_awk_escape "$(sed -r 's/\\(.)/\1/g' <<<"$2")")" \
+    | _fzf_bash_completion_unbuffered_awk '' 'sub(find, replace)' -vfind="^$(_fzf_bash_completion_awk_escape "$2")" -vreplace="$(sed -r 's/\\(.)/\1/g; s/[&\]/\\&/g' <<<"$2")" \
     | "$dir_marker"
 }
 

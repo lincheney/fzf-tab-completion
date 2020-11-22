@@ -237,7 +237,7 @@ fzf_bash_completer() {
     local compl_bashdefault compl_default compl_dirnames compl_filenames compl_noquote compl_nosort compl_nospace compl_plusdirs
 
     # preload completions in top shell
-    { complete -p "$1" || __load_completion "$1"; } &>/dev/null
+    { complete -p -- "$1" || __load_completion "$1"; } &>/dev/null
 
     eval "$(
         set -o pipefail
@@ -290,7 +290,7 @@ fzf_bash_completer() {
 
 _fzf_bash_completion_complete() {
     local compgen_actions=()
-    local compspec="$(complete -p "$1" 2>/dev/null || complete -p '')"
+    local compspec="$(complete -p -- "$1" 2>/dev/null || complete -p '')"
 
     eval "compspec=( $compspec )"
     set -- "${compspec[@]}" "$@"
@@ -336,7 +336,7 @@ _fzf_bash_completion_complete() {
     if [ -n "$compl_function" ]; then
         "$compl_function" "$@" >/dev/null
         if [ "$?" = 124 ]; then
-            local newcompspec="$(complete -p "$1" 2>/dev/null || complete -p '')"
+            local newcompspec="$(complete -p -- "$1" 2>/dev/null || complete -p '')"
             if [ "$newcompspec" != "$compspec" ]; then
                 return 124
             fi

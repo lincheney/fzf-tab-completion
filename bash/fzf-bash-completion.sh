@@ -1,4 +1,4 @@
-_FZF_COMPLETION_SEP=$'\x7f'
+_FZF_COMPLETION_SEP=$'\x01'
 
 _fzf_bash_completion_awk_escape() {
     sed 's/\\/\\\\\\\\/g; s/[[*^$.]/\\\\&/g' <<<"$1"

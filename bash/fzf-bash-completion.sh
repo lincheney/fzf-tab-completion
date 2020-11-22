@@ -384,7 +384,7 @@ _fzf_bash_completion_complete() {
 
             echo
         ) | _fzf_bash_completion_apply_xfilter "$compl_xfilter" \
-          | _fzf_bash_completion_unbuffered_awk '$0!=""' 'sub(find, replace)' -vfind='.*' -vreplace="${compl_prefix}&${compl_suffix}" \
+          | _fzf_bash_completion_unbuffered_awk '$0!=""' 'sub(find, replace)' -vfind='.*' -vreplace="$(printf %s "$compl_prefix" | sed 's/[&\]/\\&/g')&$(printf %s "$compl_suffix" | sed 's/[&\]/\\&/g')" \
           | if IFS= read -r line; then
                 echo "$line"; cat
             else

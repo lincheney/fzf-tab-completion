@@ -185,7 +185,7 @@ _fzf_completion_compadd() {
     (( __comp_index++ ))
 
     local file_prefix="${__optskv[-W]:-.}"
-    local __disp_str __hit_str __show_str __real_str
+    local __disp_str __hit_str __show_str __real_str __suffix
     local padding="$(printf %s\\n "${__disp[@]}" | awk '{print length}' | sort -nr | head -n1)"
     padding="$(( padding==0 ? 0 : padding>COLUMNS ? padding : COLUMNS ))"
 
@@ -201,6 +201,7 @@ _fzf_completion_compadd() {
         __hit_str="${__hits[$i]}"
         # full display string
         __disp_str="${__disp[$i]}"
+        __suffix="$suffix"
 
         # part of display string containing match
         if [ -n "$__noquote" ]; then
@@ -212,6 +213,7 @@ _fzf_completion_compadd() {
 
         if [[ -n "$__filenames" && -n "$__show_str" && -d "${file_prefix}/${__show_str}" ]]; then
             __show_str+=/
+            __suffix+=/
         fi
 
         if [[ -z "$__disp_str" || "$__disp_str" == "$__show_str"* ]]; then
@@ -245,7 +247,7 @@ _fzf_completion_compadd() {
         fi
 
         # fullvalue, value, index, prefix, show, display
-        printf %s\\n "${prefix}${__real_str}${suffix}${_FZF_COMPLETION_SEP}${(q)__hit_str}${_FZF_COMPLETION_SEP}${__comp_index}${_FZF_COMPLETION_SEP}${__show_str}${_FZF_COMPLETION_SEP}${__disp_str}"
+        printf %s\\n "${prefix}${__real_str}${__suffix}${_FZF_COMPLETION_SEP}${(q)__hit_str}${_FZF_COMPLETION_SEP}${__comp_index}${_FZF_COMPLETION_SEP}${__show_str}${_FZF_COMPLETION_SEP}${__disp_str}"
     done
     return "$code"
 }

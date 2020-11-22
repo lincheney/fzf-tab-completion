@@ -137,13 +137,13 @@ fzf_bash_completion() {
     fi
     COMP_CWORD="${#COMP_WORDS[@]}"
     (( COMP_CWORD-- ))
-
     COMP_LINE="${COMP_WORDS[*]}"
-    COMP_POINT="${#COMP_LINE}"
 
     if [[ ${#COMP_WORDS[@]} -gt 1 ]]; then
         _fzf_bash_completion_expand_alias "${COMP_WORDS[0]}"
     fi
+    COMP_POINT="${#COMP_LINE}"
+
     local cmd="${COMP_WORDS[0]}"
     local prev
     if [ "$COMP_CWORD" = 0 ]; then
@@ -179,8 +179,7 @@ _fzf_bash_completion_expand_alias() {
         if [ -n "${value[*]}" -a "${value[0]}" != "$1" ]; then
             COMP_WORDS=( "${value[@]}" "${COMP_WORDS[@]:1}" )
             COMP_CWORD="$(( COMP_CWORD + ${#value[@]} - 1 ))"
-            COMP_LINE="$(<<<"$COMP_LINE" awk '' 'sub(find, replace)' -vfind="$(_fzf_bash_completion_awk_escape "$1")" -vreplace="$(_fzf_bash_completion_awk_escape "${BASH_ALIASES[$1]}")")"
-            COMP_POINT="$(( COMP_POINT + ${#BASH_ALIASES[$1]} - ${#1} ))"
+            COMP_LINE="${BASH_ALIASES[$1]}${COMP_LINE:${#1}}"
         fi
     fi
 }

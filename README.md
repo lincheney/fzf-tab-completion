@@ -147,6 +147,7 @@ These are the applications that I have seen working:
 * `irb --legacy` (the new `irb` in ruby 2.7 uses `ruby-reline` instead of readline)
 * `gdb`
 * `sqlite3`
+* `bash` (only when not statically but dynamically linked to libreadline)
 
 ## Related projects
 

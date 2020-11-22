@@ -52,8 +52,8 @@ fzf_completion() {
                 local __comp_index=0 __autoloaded=()
                 exec {__stdout}>&1
                 stderr="$(
+                    trap '<<<"$autoloads" fgrep -xv "$(functions -u +)" | sed "s/^/builtin autoload +XUz /" >&"${__evaled}"' EXIT TERM
                     _main_complete 2>&1 1>&"${__stdout}"
-                    <<<"$autoloads" fgrep -xv "$(functions -u +)" | sed 's/^/builtin autoload +XUz /' >&"${__evaled}"
                 )"
                 printf %s\\n "stderr=${(q)stderr}" >&"${__evaled}"
             ) | awk -F"$_FZF_COMPLETION_SEP" '$1!="" && !x[$1]++ { print $0; system("") }'

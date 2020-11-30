@@ -53,7 +53,7 @@ fzf_completion() {
                 exec {__stdout}>&1
                 stderr="$(
                     trap '<<<"$autoloads" fgrep -xv "$(functions -u +)" | sed "s/^/builtin autoload +XUz /" >&"${__evaled}"' EXIT TERM
-                    _main_complete 2>&1 1>&"${__stdout}"
+                    _main_complete 2>&1
                 )"
                 printf %s\\n "stderr=${(q)stderr}" >&"${__evaled}"
             ) | awk -F"$_FZF_COMPLETION_SEP" '$1!="" && !x[$1]++ { print $0; system("") }'
@@ -247,7 +247,7 @@ _fzf_completion_compadd() {
         fi
 
         # fullvalue, value, index, prefix, show, display
-        printf %s\\n "${prefix}${__real_str}${__suffix}${_FZF_COMPLETION_SEP}${(q)__hit_str}${_FZF_COMPLETION_SEP}${__comp_index}${_FZF_COMPLETION_SEP}${__show_str}${_FZF_COMPLETION_SEP}${__disp_str}"
+        printf %s\\n "${prefix}${__real_str}${__suffix}${_FZF_COMPLETION_SEP}${(q)__hit_str}${_FZF_COMPLETION_SEP}${__comp_index}${_FZF_COMPLETION_SEP}${__show_str}${_FZF_COMPLETION_SEP}${__disp_str}" >&"${__stdout}"
     done
     return "$code"
 }

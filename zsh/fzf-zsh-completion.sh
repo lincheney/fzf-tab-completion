@@ -47,6 +47,7 @@ fzf_completion() {
 
         set -o monitor +o notify
         exec {__evaled}>&1
+        trap '' INT
         coproc (
             (
                 local __comp_index=0 __autoloaded=()

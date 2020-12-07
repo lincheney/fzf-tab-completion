@@ -40,7 +40,8 @@ fzf_completion() {
             override_approximate
         fi
 
-        local autoloads="$(functions -u +)"
+        # all except autoload functions
+        local full_functions="$(functions + | fgrep -vx "$(functions -u +)")"
 
         # do not allow grouping, it stuffs up display strings
         zstyle ":completion:*:*" list-grouped no
@@ -53,7 +54,11 @@ fzf_completion() {
                 local __comp_index=0 __autoloaded=()
                 exec {__stdout}>&1
                 stderr="$(
-                    trap '<<<"$autoloads" fgrep -xv "$(functions -u +)" | sed "s/^/builtin autoload +XUz /" >&"${__evaled}"' EXIT TERM
+                    _fzf_completion_preexit() {
+                        echo set -A _comps "${(qkv)_comps[@]}" >&"${__evaled}"
+                        functions + | fgrep -vx -e "$(functions -u +)" -e "$full_functions" | while read -r f; do which "$f"; done >&"${__evaled}"
+                    }
+                    trap _fzf_completion_preexit EXIT TERM
                     _main_complete 2>&1
                 )"
                 printf %s\\n "stderr=${(q)stderr}" >&"${__evaled}"

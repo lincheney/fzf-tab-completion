@@ -7,71 +7,57 @@ zmodload zsh/zselect
 zmodload zsh/system
 
 fzf_completion() {
-    emulate -LR zsh
-    setopt interactivecomments
-    local value code stderr
+    local __value __code __stderr __comp_index=0 __coproc_pid
     local __compadd_args=()
 
-    if zstyle -t ':completion:' show-completer; then
-        zle -R 'Loading matches ...'
-    fi
+    emulate -LR zsh
+    setopt interactivecomments
+    unsetopt monitor notify
 
-    eval "$(
-        # set -o pipefail
-        # hacks
-        override_compadd() { compadd() { _fzf_completion_compadd "$@"; }; }
-        override_compadd
+    coproc (
+        lines=()
+        while read -r line; do
+            lines+=( "$line" )
+            if [ "$line" = return ]; then
+                break
+            fi
+        done
+        printf %s\\n "${lines[@]}"
+    )
+    __coproc_pid="$!"
 
-        # massive hack
-        # _approximate also overrides _compadd, so we have to override their one
-        override_approximate() {
-            functions[_approximate]="unfunction compadd; { ${functions[_approximate]//builtin compadd /_fzf_completion_compadd } } always { override_compadd }"
-        }
+    zle _fzf_completion_gen_matches
 
-        if [[ "$functions[_approximate]" == 'builtin autoload'* ]]; then
-            _approximate() {
-                unfunction _approximate
-                printf %s\\n "builtin autoload +XUz _approximate" >&"${__evaled}"
-                builtin autoload +XUz _approximate
-                override_approximate
-                _approximate "$@"
-            }
-        else
-            override_approximate
-        fi
+    # end coproc
+    echo return >&p 2>/dev/null
+    kill -- -"$__coproc_pid" 2>/dev/null && wait "$__coproc_pid"
 
-        # all except autoload functions
-        local full_functions="$(functions + | fgrep -vx "$(functions -u +)")"
+    zle _fzf_completion_compadd_matches
 
-        # do not allow grouping, it stuffs up display strings
-        zstyle ":completion:*:*" list-grouped no
+    # shutdown the coproc and hide from job table
+    coproc :
+    disown %:
+}
 
-        set -o monitor +o notify
-        exec {__evaled}>&1
-        trap '' INT
-        coproc (
-            (
-                local __comp_index=0 __autoloaded=()
-                exec {__stdout}>&1
-                stderr="$(
-                    _fzf_completion_preexit() {
-                        echo set -A _comps "${(qkv)_comps[@]}" >&"${__evaled}"
-                        functions + | fgrep -vx -e "$(functions -u +)" -e "$full_functions" | while read -r f; do which "$f"; done >&"${__evaled}"
-                    }
-                    trap _fzf_completion_preexit EXIT TERM
-                    _main_complete 2>&1
-                )"
-                printf %s\\n "stderr=${(q)stderr}" >&"${__evaled}"
-            ) | awk -F"$_FZF_COMPLETION_SEP" '$1!="" && !x[$1]++ { print $0; system("") }'
-        )
-        coproc_pid="$!"
-        value="$(_fzf_completion_selector <&p)"
-        code="$?"
-        kill -- -"$coproc_pid" 2>/dev/null && wait "$coproc_pid"
+_fzf_completion_gen_matches() {
+    exec {_fzf_compadd}> >(
+        _fzf_completion_selector \
+            < <(awk -F"$_FZF_COMPLETION_SEP" '$1!="" && !x[$1]++ { print $0; system("") }') \
+            > >(IFS= read -r value; IFS= read -r code; printf 'value=%q; code=%q\nreturn\n' "$value" "$code" >&p; kill -INT -- -"$$")
+    )
 
-        printf 'code=%q; value=%q\n' "$code" "$value"
-    )" 2>/dev/null
+    {
+        _main_complete > >(while IFS= read -r line; do
+            printf '_fzf_stderr+=%q\n' "$line"$'\n' >&p
+        done) 2>&1
+    } always {
+        exec {_fzf_compadd}<&-
+    }
+    sleep infinity
+}
 
+_fzf_completion_compadd_matches() {
+    source <(cat <&p)
     case "$code" in
         0)
             local opts index
@@ -88,8 +74,8 @@ fzf_completion() {
             # run all compadds with no matches, in case any messages to display
             eval "${(j.;.)__compadd_args:-true} --"
             if (( ! ${#__compadd_args[@]} )) && zstyle -s :completion:::::warnings format msg; then
-                compadd -x "$msg"
-                compadd -x "$stderr"
+                builtin compadd -x "$msg"
+                builtin compadd -x "$stderr"
                 stderr=
             fi
             ;;
@@ -123,13 +109,21 @@ _fzf_completion_selector() {
             if IFS= read -r; then
                 lines+=( "$REPLY" )
             elif (( ${#lines[@]} == 1 )); then # only one input
-                printf %s\\n "${lines[1]}" && return
+                printf %s\\n "${lines[1]}"
+                echo 0
+                return
             else # no input
+                echo
+                echo 1
                 return 1
             fi
         else
             sysread -c 5 -t0.05 <&"$tty"
-            [ "$REPLY" = $'\x1b' ] && return 130 # escape pressed
+            if [ "$REPLY" = $'\x1b' ]; then
+                echo
+                echo 130
+                return 130 # escape pressed
+            fi
         fi
     done
 
@@ -154,6 +148,7 @@ _fzf_completion_selector() {
         < <(printf %s\\n "${lines[@]}"; cat)
     code="$?"
     tput cuu1 >/dev/tty
+    echo "$code"
     return "$code"
 }
 
@@ -187,7 +182,7 @@ _fzf_completion_compadd() {
         __ipre=( -i "${__ipre[2]}" )
         IPREFIX=
     fi
-    printf '__compadd_args+=( %q )\n' "$(printf '%q ' PREFIX="$PREFIX" IPREFIX="$IPREFIX" SUFFIX="$SUFFIX" ISUFFIX="$ISUFFIX" compadd ${__flags:+-$__flags} "${__opts[@]}" "${__ipre[@]}" "${__apre[@]}" "${__hpre[@]}" "${__hsuf[@]}" "${__asuf[@]}" "${__isuf[@]}" -U)" >&"${__evaled}"
+    __compadd_args+=( "$(printf '%q ' PREFIX="$PREFIX" IPREFIX="$IPREFIX" SUFFIX="$SUFFIX" ISUFFIX="$ISUFFIX" builtin compadd ${__flags:+-$__flags} "${__opts[@]}" "${__ipre[@]}" "${__apre[@]}" "${__hpre[@]}" "${__hsuf[@]}" "${__asuf[@]}" "${__isuf[@]}" -U)" )
     (( __comp_index++ ))
 
     local file_prefix="${__optskv[-W]:-.}"
@@ -253,10 +248,35 @@ _fzf_completion_compadd() {
         fi
 
         # fullvalue, value, index, prefix, show, display
-        printf %s\\n "${prefix}${__real_str}${__suffix}${_FZF_COMPLETION_SEP}${(q)__hit_str}${_FZF_COMPLETION_SEP}${__comp_index}${_FZF_COMPLETION_SEP}${__show_str}${_FZF_COMPLETION_SEP}${__disp_str}" >&"${__stdout}"
+        printf %s\\n "${prefix}${__real_str}${__suffix}${_FZF_COMPLETION_SEP}${(q)__hit_str}${_FZF_COMPLETION_SEP}${__comp_index}${_FZF_COMPLETION_SEP}${__show_str}${_FZF_COMPLETION_SEP}${__disp_str}" >&"${_fzf_compadd}" 2>/dev/null
     done
     return "$code"
 }
 
-zle -C fzf_completion complete-word fzf_completion
+# do not allow grouping, it stuffs up display strings
+zstyle ":completion:*:*" list-grouped no
+
+_fzf_completion_override_compadd() { compadd() { _fzf_completion_compadd "$@"; }; }
+_fzf_completion_override_compadd
+
+# massive hack
+# _approximate also overrides _compadd, so we have to override their one
+_fzf_completion_override_approximate() {
+    unfunction _approximate
+    builtin autoload _approximate
+    functions[_approximate]="unfunction compadd; { ${functions[_approximate]//builtin compadd /_fzf_completion_compadd } } always { _fzf_completion_override_compadd }"
+}
+
+if [[ "${functions[_approximate]}" == 'builtin autoload'* ]]; then
+    _approximate() {
+        _fzf_completion_override_approximate
+        _approximate "$@"
+    }
+else
+    _fzf_completion_override_approximate
+fi
+
+zle -C _fzf_completion_gen_matches complete-word _fzf_completion_gen_matches
+zle -C _fzf_completion_compadd_matches complete-word _fzf_completion_compadd_matches
+zle -N fzf_completion
 fzf_default_completion=fzf_completion

@@ -16,7 +16,7 @@ fzf_completion() {
 
     coproc (
         lines=()
-        while read -r line; do
+        while IFS= read -r line; do
             lines+=( "$line" )
             if [ "$line" = return ]; then
                 break

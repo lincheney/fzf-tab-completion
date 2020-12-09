@@ -57,6 +57,7 @@ _fzf_completion_gen_matches() {
 }
 
 _fzf_completion_compadd_matches() {
+    compstate[insert]=unambiguous
     source <(cat <&p)
     case "$code" in
         0)
@@ -71,6 +72,7 @@ _fzf_completion_compadd_matches() {
             compstate[insert]=all
             ;;
         1)
+            local msg
             # run all compadds with no matches, in case any messages to display
             eval "${(j.;.)__compadd_args:-true} --"
             if (( ! ${#__compadd_args[@]} )) && zstyle -s :completion:::::warnings format msg; then

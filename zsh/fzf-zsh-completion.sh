@@ -77,7 +77,7 @@ _fzf_completion_compadd_matches() {
             eval "${(j.;.)__compadd_args:-true} --"
             if (( ! ${#__compadd_args[@]} )) && zstyle -s :completion:::::warnings format msg; then
                 builtin compadd -x "$msg"
-                builtin compadd -x "$__stderr"
+                builtin compadd -x "${__stderr//\%/%%}"
                 stderr=
             fi
             ;;

@@ -39,11 +39,57 @@ fzf_completion() {
     disown %:
 }
 
+_fzf_completion_uniq() {
+}
+
 _fzf_completion_gen_matches() {
+    local main_pid="$$"
     exec {_fzf_compadd}> >(
-        _fzf_completion_selector \
-            < <(awk -F"$_FZF_COMPLETION_SEP" '$1!="" && !x[$1]++ { print $0; system("") }') \
-            > >(IFS= read -r value; IFS= read -r code; printf 'value=%q; code=%q\nreturn\n' "$value" "$code" >&p; kill -INT -- -"$$")
+        local lines=() code
+        exec < <(awk -F"$_FZF_COMPLETION_SEP" '$1!="" && !x[$1]++ { print $0; system("") }')
+        {
+            _fzf_completion_pre_selector
+            if (( code > 0 )); then
+                # error, return immediately
+                printf 'code=%q\nreturn\n' "$code" >&p
+
+            elif (( ${#lines[@]} == 1 )); then
+                # only one, return that
+                printf 'value=%q\ncode=%q\nreturn\n' "${lines[1]}" "$code" >&p
+
+            else
+                # more than one, actually invoke fzf
+                local context field=2
+                context="${compstate[context]//_/-}"
+                context="${context:+-$context-}"
+                if [ "$context" = -command- -a "$CURRENT" -gt 1 ]; then
+                    context="${words[1]}"
+                fi
+                context=":completion::complete:${context:-*}::${(j-,-)words[@]}"
+
+                if zstyle -t "$context" fzf-search-display; then
+                    field=2..5
+                fi
+
+                local flags=() value fzf
+                zstyle -a "$context" fzf-completion-opts flags
+                fzf="$(__fzfcmd 2>/dev/null)"
+
+                tput cud1 >/dev/tty # fzf clears the line on exit so move down one
+                value="$(
+                    FZF_DEFAULT_OPTS="--height ${FZF_TMUX_HEIGHT:-40%} --reverse $FZF_DEFAULT_OPTS $FZF_COMPLETION_OPTS" \
+                    "${fzf:-fzf}" --ansi --prompt "> $PREFIX" -d "$_FZF_COMPLETION_SEP" --with-nth 4..6 --nth "$field" "${flags[@]}" \
+                        < <(printf %s\\n "${lines[@]}"; cat)
+                )"
+                code="$?"
+                tput cuu1 >/dev/tty
+
+                printf 'value=%q\ncode=%q\nreturn\n' "$value" "$code" >&p
+            fi
+        } always {
+            # fzf is done, kill main process
+            kill -INT -- -"$main_pid"
+        }
     )
 
     {
@@ -102,8 +148,9 @@ _fzf_completion_post() {
     fi
 }
 
-_fzf_completion_selector() {
-    local lines=() reply REPLY
+_fzf_completion_pre_selector() {
+    local reply REPLY
+    code=0
     exec {tty}</dev/tty
     while (( ${#lines[@]} < 2 )); do
         zselect -r 0 "$tty"
@@ -111,47 +158,20 @@ _fzf_completion_selector() {
             if IFS= read -r; then
                 lines+=( "$REPLY" )
             elif (( ${#lines[@]} == 1 )); then # only one input
-                printf %s\\n "${lines[1]}"
-                echo 0
                 return
             else # no input
-                echo
-                echo 1
-                return 1
+                code=1
+                return
             fi
         else
             sysread -c 5 -t0.05 <&"$tty"
             if [ "$REPLY" = $'\x1b' ]; then
-                echo
-                echo 130
-                return 130 # escape pressed
+                # escape pressed
+                code=130
+                return
             fi
         fi
     done
-
-    local context field=2
-    context="${compstate[context]//_/-}"
-    context="${context:+-$context-}"
-    if [ "$context" = -command- -a "$CURRENT" -gt 1 ]; then
-        context="${words[1]}"
-    fi
-    context=":completion::complete:${context:-*}::${(j-,-)words[@]}"
-
-    if zstyle -t "$context" fzf-search-display; then
-        field=2..5
-    fi
-
-    local flags=()
-    zstyle -a "$context" fzf-completion-opts flags
-
-    tput cud1 >/dev/tty # fzf clears the line on exit so move down one
-    FZF_DEFAULT_OPTS="--height ${FZF_TMUX_HEIGHT:-40%} --reverse $FZF_DEFAULT_OPTS $FZF_COMPLETION_OPTS" \
-        $(__fzfcmd 2>/dev/null || echo fzf) --ansi --prompt "> $PREFIX" -d "$_FZF_COMPLETION_SEP" --with-nth 4..6 --nth "$field" "${flags[@]}" \
-        < <(printf %s\\n "${lines[@]}"; cat)
-    code="$?"
-    tput cuu1 >/dev/tty
-    echo "$code"
-    return "$code"
 }
 
 _fzf_completion_compadd() {
@@ -174,13 +194,12 @@ _fzf_completion_compadd() {
     else
         __disp=( "${(@P)__disp[2]}" )
     fi
+    if (( ${#__optskv[(i)-X]} || ${#__optskv[(i)-x]} )); then
+        return 0
+    fi
 
     builtin compadd -Q -A __hits -D __disp "${__flags[@]}" "${__opts[@]}" "${__ipre[@]}" "${__apre[@]}" "${__hpre[@]}" "${__hsuf[@]}" "${__asuf[@]}" "${__isuf[@]}" "$@"
     local code="$?"
-
-    if (( ${#__hits[@]} == 0 )); then
-        return "$code"
-    fi
 
     __flags="${(j..)__flags//[ak-]}"
     if [ -z "${__optskv[(i)-U]}" ]; then
@@ -189,8 +208,15 @@ _fzf_completion_compadd() {
         __ipre=( -i "${__ipre[2]}" )
         IPREFIX=
     fi
-    __compadd_args+=( "$(printf '%q ' PREFIX="$PREFIX" IPREFIX="$IPREFIX" SUFFIX="$SUFFIX" ISUFFIX="$ISUFFIX" builtin compadd ${__flags:+-$__flags} "${__opts[@]}" "${__ipre[@]}" "${__apre[@]}" "${__hpre[@]}" "${__hsuf[@]}" "${__asuf[@]}" "${__isuf[@]}" -U)" )
-    (( __comp_index++ ))
+
+    if (( ${#__hits[@]} > 0 || ${#__optskv[(i)-X]} || ${#__optskv[(i)-x]} )); then
+        __compadd_args+=( "$(printf '%q ' PREFIX="$PREFIX" IPREFIX="$IPREFIX" SUFFIX="$SUFFIX" ISUFFIX="$ISUFFIX" builtin compadd ${__flags:+-$__flags} "${__opts[@]}" "${__ipre[@]}" "${__apre[@]}" "${__hpre[@]}" "${__hsuf[@]}" "${__asuf[@]}" "${__isuf[@]}" -U)" )
+        (( __comp_index++ ))
+    fi
+
+    if (( ${#__hits[@]} == 0 )); then
+        return "$code"
+    fi
 
     local file_prefix="${__optskv[-W]:-.}"
     local __disp_str __hit_str __show_str __real_str __suffix

@@ -103,8 +103,11 @@ _fzf_completion_gen_matches() {
             printf '__stderr+=%q\n' "$line"$'\n' >&p
         done) 2>&1
     } always {
-        exec {_fzf_compadd}<&-
-        eval "$__show_completer_style"
+        () {
+            trap '' INT
+            exec {_fzf_compadd}<&-
+            eval "$__show_completer_style"
+        }
     }
     sleep infinity
 }

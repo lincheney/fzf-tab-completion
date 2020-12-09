@@ -7,6 +7,9 @@ zmodload zsh/zselect
 zmodload zsh/system
 
 fzf_completion() {
+    # main widget that runs the other 2 completion widgets
+    # you can't call completion widget from inside another, so have to do it here
+
     local __value __code __stderr __comp_index=0 __coproc_pid
     local __compadd_args=()
 
@@ -14,6 +17,8 @@ fzf_completion() {
     setopt interactivecomments
     unsetopt monitor notify
 
+    # this coproc is effectivly sponge
+    # it reads all input (until "return") and spits it back out only at the end
     coproc (
         lines=()
         while IFS= read -r line; do
@@ -26,21 +31,30 @@ fzf_completion() {
     )
     __coproc_pid="$!"
 
+    # generate (_main_complete) and select (fzf) the matches
+    # we can't run the compadds in this widget because the SIGINT causes it to fail
     zle _fzf_completion_gen_matches
 
     # end coproc
     echo return >&p 2>/dev/null
     kill -- -"$__coproc_pid" 2>/dev/null && wait "$__coproc_pid"
 
+    # actually compadd the matches selected
     zle _fzf_completion_compadd_matches
 
     # shutdown the coproc and hide from job table
     coproc :
-    disown %:
+    disown %: &>/dev/null
 }
 
 _fzf_completion_gen_matches() {
+    # runs _main_complete in the main process
+    # fzf runs in a subshell
+    # fzf subshell communicates/pre-empts the main process using signals
+    # in particular SIGINT to indicate fzf has quit so we can stop looking or more matches
+
     local __main_pid="$$"
+
     exec {_fzf_compadd}> >(
         local lines=() code
         exec < <(awk -F"$_FZF_COMPLETION_SEP" '$1!="" && !x[$1]++ { print $0; system("") }')
@@ -95,25 +109,34 @@ _fzf_completion_gen_matches() {
     local __show_completer_style="$(zstyle -L ':completion:*' show-completer)"
     {
         TRAPUSR1() {
+            # turn off show-completer
             eval "$(echo "$__show_completer_style" | sed 's/^zstyle /& -d /')"
             zstyle ':completion:*' show-completer false
         }
 
+        # pipe stdout+stderr into the sponge coproc
         _main_complete > >(while IFS= read -r line; do
             printf '__stderr+=%q\n' "$line"$'\n' >&p
         done) 2>&1
     } always {
         () {
+            # shield from INT
             trap '' INT
+            # close fd so the fzf subshell knows there are no more matches
             exec {_fzf_compadd}<&-
+            # restore old show-completer zstyle
             eval "$__show_completer_style"
         }
     }
+    # this is either unreachable (SIGINT-ed above) or will be SIGINT-ed itself
     sleep infinity
 }
 
 _fzf_completion_compadd_matches() {
+    # prevent tabs being inserted even when no cancelled
     compstate[insert]=unambiguous
+
+    # eval everything from sponge
     source <(cat <&p)
     case "$code" in
         0)
@@ -133,6 +156,7 @@ _fzf_completion_compadd_matches() {
             eval "${(j.;.)__compadd_args:-true} --"
             if (( ! ${#__compadd_args[@]} )) && zstyle -s :completion:::::warnings format msg; then
                 builtin compadd -x "$msg"
+                # display stderr as well
                 builtin compadd -x "${__stderr//\%/%%}"
                 stderr=
             fi
@@ -159,6 +183,10 @@ _fzf_completion_post() {
 }
 
 _fzf_completion_pre_selector() {
+    # check for 0, 1 or >1 results
+    # avoid running fzf if 0 or 1 for slight speed up
+    # also escape key has no effect on fzf -0 , so we do that here
+
     local reply REPLY
     code=0
     exec {tty}</dev/tty
@@ -219,17 +247,20 @@ _fzf_completion_compadd() {
         IPREFIX=
     fi
 
+    # only run compadd if there are results or -x/-X is given
     if (( ${#__hits[@]} > 0 || ${#__optskv[(i)-X]} || ${#__optskv[(i)-x]} )); then
         __compadd_args+=( "$(printf '%q ' PREFIX="$PREFIX" IPREFIX="$IPREFIX" SUFFIX="$SUFFIX" ISUFFIX="$ISUFFIX" builtin compadd ${__flags:+-$__flags} "${__opts[@]}" "${__ipre[@]}" "${__apre[@]}" "${__hpre[@]}" "${__hsuf[@]}" "${__asuf[@]}" "${__isuf[@]}" -U)" )
         (( __comp_index++ ))
     fi
 
+    # quit immediately if no results
     if (( ${#__hits[@]} == 0 )); then
         return "$code"
     fi
 
     local file_prefix="${__optskv[-W]:-.}"
     local __disp_str __hit_str __show_str __real_str __suffix
+    # pad out so that e.g. short flags with long display strings are not penalised
     local padding="$(printf %s\\n "${__disp[@]}" | awk '{print length}' | sort -nr | head -n1)"
     padding="$(( padding==0 ? 0 : padding>COLUMNS ? padding : COLUMNS ))"
 

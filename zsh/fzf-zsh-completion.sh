@@ -40,7 +40,7 @@ fzf_completion() {
 }
 
 _fzf_completion_gen_matches() {
-    local main_pid="$$"
+    local __main_pid="$$"
     exec {_fzf_compadd}> >(
         local lines=() code
         exec < <(awk -F"$_FZF_COMPLETION_SEP" '$1!="" && !x[$1]++ { print $0; system("") }')
@@ -72,6 +72,9 @@ _fzf_completion_gen_matches() {
                 zstyle -a "$context" fzf-completion-opts flags
                 fzf="$(__fzfcmd 2>/dev/null)"
 
+                # turn off show-completer so it doesn't interfere
+                kill -USR1 -- "$__main_pid"
+
                 tput cud1 >/dev/tty # fzf clears the line on exit so move down one
                 value="$(
                     FZF_DEFAULT_OPTS="--height ${FZF_TMUX_HEIGHT:-40%} --reverse $FZF_DEFAULT_OPTS $FZF_COMPLETION_OPTS" \
@@ -85,16 +88,23 @@ _fzf_completion_gen_matches() {
             fi
         } always {
             # fzf is done, kill main process
-            kill -INT -- -"$main_pid"
+            kill -INT -- -"$__main_pid"
         }
     )
 
+    local __show_completer_style="$(zstyle -L ':completion:*' show-completer)"
     {
+        TRAPUSR1() {
+            eval "$(echo "$__show_completer_style" | sed 's/^zstyle /& -d /')"
+            zstyle ':completion:*' show-completer false
+        }
+
         _main_complete > >(while IFS= read -r line; do
             printf '__stderr+=%q\n' "$line"$'\n' >&p
         done) 2>&1
     } always {
         exec {_fzf_compadd}<&-
+        eval "$__show_completer_style"
     }
     sleep infinity
 }

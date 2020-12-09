@@ -48,7 +48,7 @@ _fzf_completion_gen_matches() {
 
     {
         _main_complete > >(while IFS= read -r line; do
-            printf '_fzf_stderr+=%q\n' "$line"$'\n' >&p
+            printf '__stderr+=%q\n' "$line"$'\n' >&p
         done) 2>&1
     } always {
         exec {_fzf_compadd}<&-
@@ -75,7 +75,7 @@ _fzf_completion_compadd_matches() {
             eval "${(j.;.)__compadd_args:-true} --"
             if (( ! ${#__compadd_args[@]} )) && zstyle -s :completion:::::warnings format msg; then
                 builtin compadd -x "$msg"
-                builtin compadd -x "$stderr"
+                builtin compadd -x "$__stderr"
                 stderr=
             fi
             ;;
@@ -85,7 +85,7 @@ _fzf_completion_compadd_matches() {
     # so call it after this function returns
     eval "TRAPEXIT() {
         zle reset-prompt
-        _fzf_completion_post ${(q)stderr} ${(q)code}
+        _fzf_completion_post ${(q)__stderr} ${(q)__code}
     }"
 }
 

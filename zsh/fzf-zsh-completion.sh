@@ -39,9 +39,6 @@ fzf_completion() {
     disown %:
 }
 
-_fzf_completion_uniq() {
-}
-
 _fzf_completion_gen_matches() {
     local main_pid="$$"
     exec {_fzf_compadd}> >(

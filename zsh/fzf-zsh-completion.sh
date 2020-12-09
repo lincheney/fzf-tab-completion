@@ -175,6 +175,11 @@ _fzf_completion_compadd() {
 
     builtin compadd -Q -A __hits -D __disp "${__flags[@]}" "${__opts[@]}" "${__ipre[@]}" "${__apre[@]}" "${__hpre[@]}" "${__hsuf[@]}" "${__asuf[@]}" "${__isuf[@]}" "$@"
     local code="$?"
+
+    if (( ${#__hits[@]} == 0 )); then
+        return "$code"
+    fi
+
     __flags="${(j..)__flags//[ak-]}"
     if [ -z "${__optskv[(i)-U]}" ]; then
         # -U ignores $IPREFIX so add it to -i

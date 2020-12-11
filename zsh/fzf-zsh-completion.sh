@@ -60,7 +60,8 @@ _fzf_completion_gen_matches() {
         TRAPINT() { __fzf_is_done=1; }
 
         exec {_fzf_compadd}> >(
-            local lines=() code
+            local lines=()
+            local code value
             exec < <(awk -F"$_FZF_COMPLETION_SEP" '$1!="" && !x[$1]++ { print $0; system("") }')
             {
                 _fzf_completion_pre_selector
@@ -86,7 +87,7 @@ _fzf_completion_gen_matches() {
                         field=2..5
                     fi
 
-                    local flags=() value fzf
+                    local flags=() fzf
                     zstyle -a "$context" fzf-completion-opts flags
                     fzf="$(__fzfcmd 2>/dev/null)"
 

@@ -54,82 +54,86 @@ _fzf_completion_gen_matches() {
     # in particular SIGINT to indicate fzf has quit so we can stop looking or more matches
 
     local __main_pid="$$"
+    local __fzf_is_done=0
+    () {
+        # shield from INT
+        TRAPINT() { __fzf_is_done=1; }
 
-    exec {_fzf_compadd}> >(
-        local lines=() code
-        exec < <(awk -F"$_FZF_COMPLETION_SEP" '$1!="" && !x[$1]++ { print $0; system("") }')
+        exec {_fzf_compadd}> >(
+            local lines=() code
+            exec < <(awk -F"$_FZF_COMPLETION_SEP" '$1!="" && !x[$1]++ { print $0; system("") }')
+            {
+                _fzf_completion_pre_selector
+                if (( code > 0 )); then
+                    # error, return immediately
+                    printf 'code=%q\nreturn\n' "$code" >&p
+
+                elif (( ${#lines[@]} == 1 )); then
+                    # only one, return that
+                    printf 'value=%q\ncode=%q\nreturn\n' "${lines[1]}" "$code" >&p
+
+                else
+                    # more than one, actually invoke fzf
+                    local context field=2
+                    context="${compstate[context]//_/-}"
+                    context="${context:+-$context-}"
+                    if [ "$context" = -command- -a "$CURRENT" -gt 1 ]; then
+                        context="${words[1]}"
+                    fi
+                    context=":completion::complete:${context:-*}::${(j-,-)words[@]}"
+
+                    if zstyle -t "$context" fzf-search-display; then
+                        field=2..5
+                    fi
+
+                    local flags=() value fzf
+                    zstyle -a "$context" fzf-completion-opts flags
+                    fzf="$(__fzfcmd 2>/dev/null)"
+
+                    # turn off show-completer so it doesn't interfere
+                    kill -USR1 -- "$__main_pid"
+
+                    tput cud1 >/dev/tty # fzf clears the line on exit so move down one
+                    value="$(
+                        FZF_DEFAULT_OPTS="--height ${FZF_TMUX_HEIGHT:-40%} --reverse $FZF_DEFAULT_OPTS $FZF_COMPLETION_OPTS" \
+                        "${fzf:-fzf}" --ansi --prompt "> $PREFIX" -d "$_FZF_COMPLETION_SEP" --with-nth 4..6 --nth "$field" "${flags[@]}" \
+                            < <(printf %s\\n "${lines[@]}"; cat) 2>/dev/tty
+                    )"
+                    code="$?"
+                    tput cuu1 >/dev/tty
+
+                    printf 'value=%q\ncode=%q\nreturn\n' "$value" "$code" >&p
+                fi
+            } always {
+                # fzf is done, kill main process
+                kill -INT -- -"$__main_pid"
+            }
+        )
+
+        local __show_completer_style="$(zstyle -L ':completion:*' show-completer)"
         {
-            _fzf_completion_pre_selector
-            if (( code > 0 )); then
-                # error, return immediately
-                printf 'code=%q\nreturn\n' "$code" >&p
+            TRAPUSR1() {
+                # turn off show-completer
+                eval "$(echo "$__show_completer_style" | sed 's/^zstyle /& -d /')"
+                zstyle ':completion:*' show-completer false
+            }
 
-            elif (( ${#lines[@]} == 1 )); then
-                # only one, return that
-                printf 'value=%q\ncode=%q\nreturn\n' "${lines[1]}" "$code" >&p
-
-            else
-                # more than one, actually invoke fzf
-                local context field=2
-                context="${compstate[context]//_/-}"
-                context="${context:+-$context-}"
-                if [ "$context" = -command- -a "$CURRENT" -gt 1 ]; then
-                    context="${words[1]}"
-                fi
-                context=":completion::complete:${context:-*}::${(j-,-)words[@]}"
-
-                if zstyle -t "$context" fzf-search-display; then
-                    field=2..5
-                fi
-
-                local flags=() value fzf
-                zstyle -a "$context" fzf-completion-opts flags
-                fzf="$(__fzfcmd 2>/dev/null)"
-
-                # turn off show-completer so it doesn't interfere
-                kill -USR1 -- "$__main_pid"
-
-                tput cud1 >/dev/tty # fzf clears the line on exit so move down one
-                value="$(
-                    FZF_DEFAULT_OPTS="--height ${FZF_TMUX_HEIGHT:-40%} --reverse $FZF_DEFAULT_OPTS $FZF_COMPLETION_OPTS" \
-                    "${fzf:-fzf}" --ansi --prompt "> $PREFIX" -d "$_FZF_COMPLETION_SEP" --with-nth 4..6 --nth "$field" "${flags[@]}" \
-                        < <(printf %s\\n "${lines[@]}"; cat) 2>/dev/tty
-                )"
-                code="$?"
-                tput cuu1 >/dev/tty
-
-                printf 'value=%q\ncode=%q\nreturn\n' "$value" "$code" >&p
-            fi
+            # pipe stdout+stderr into the sponge coproc
+            _main_complete > >(while IFS= read -r line; do
+                printf '__stderr+=%q\n' "$line"$'\n' >&p
+            done) 2>&1
         } always {
-            # fzf is done, kill main process
-            kill -INT -- -"$__main_pid"
-        }
-    )
-
-    local __show_completer_style="$(zstyle -L ':completion:*' show-completer)"
-    {
-        TRAPUSR1() {
-            # turn off show-completer
-            eval "$(echo "$__show_completer_style" | sed 's/^zstyle /& -d /')"
-            zstyle ':completion:*' show-completer false
-        }
-
-        # pipe stdout+stderr into the sponge coproc
-        _main_complete > >(while IFS= read -r line; do
-            printf '__stderr+=%q\n' "$line"$'\n' >&p
-        done) 2>&1
-    } always {
-        () {
-            # shield from INT
-            trap '' INT
             # close fd so the fzf subshell knows there are no more matches
             exec {_fzf_compadd}<&-
             # restore old show-completer zstyle
             eval "$__show_completer_style"
         }
     }
+
     # this is either unreachable (SIGINT-ed above) or will be SIGINT-ed itself
-    sleep infinity
+    if (( ! __fzf_is_done )); then
+        sleep infinity
+    fi
 }
 
 _fzf_completion_compadd_matches() {

@@ -56,6 +56,7 @@ _fzf_completion_gen_matches() {
 
     local __main_pid="$$"
     local __fzf_is_done=0
+    local __fzf_pid
     () {
         # shield from USR1
         TRAPUSR1() { :; }
@@ -114,6 +115,7 @@ _fzf_completion_gen_matches() {
                     kill -INT -- -"$__main_pid"
                 }
             )
+            __fzf_pid="$!"
 
             local __show_completer_style="$(zstyle -L ':completion:*' show-completer)"
             {
@@ -137,7 +139,8 @@ _fzf_completion_gen_matches() {
 
         # this is either unreachable (SIGINT-ed above) or will be SIGINT-ed itself
         if (( ! __fzf_is_done )); then
-            sleep infinity
+            wait "$__fzf_pid"
+            # sleep infinity
         fi
     }
 }

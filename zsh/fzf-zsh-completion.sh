@@ -12,6 +12,7 @@ fzf_completion() {
 
     local  __comp_index=0 __coproc_pid
     local __compadd_args=()
+    local __compdescribe_index __compdescribe_args=() __compdescribe_describe=() __compdescribe_matches=()
 
     emulate -LR zsh
     setopt interactivecomments
@@ -222,6 +223,59 @@ _fzf_completion_pre_selector() {
     done
 }
 
+_fzf_completion_compdescribe() {
+    local __sep __opts
+    local arg1="$1"
+    shift
+
+    if [ "$arg1" = -i -o "$arg1" = -I ]; then
+        shift 2
+        if [ "$arg1" = -I ]; then
+            __sep="$1"
+            __opts="$(printf '%q ' "${${(P)2}[@]}")"
+            shift 2
+        fi
+        __compdescribe_index=1
+        local __arrays=()
+
+        while (( $# )); do
+            __arrays+=( "$1" )
+            __compdescribe_matches+=( "$(printf %s\\n "${${(P)1}[@]}" | while IFS=: read m d; do printf '%q ' "$m"; done)" )
+            shift
+
+            local __args=
+            while [ "$#" -gt 0 -a "$1" != -- ]; do
+                __args+="$(printf '%q ' "$1")"
+                shift
+            done
+            shift
+            __compdescribe_args+=( "$__opts $__args" )
+        done
+
+        if [ "$arg1" = -I ]; then
+            local padding="$(eval "printf '%s\\n' ${__compdescribe_matches[*]}" | awk '{print length}' | sort -nr | head -n1)"
+            local a
+            for a in "${__arrays[@]}"; do
+                __compdescribe_describe+=( "$(printf %s\\n "${${(P)a}[@]}" | while IFS=: read m d; do printf '%q%q ' "${(r:$padding:)m} " "${d:+${__sep}}$d"; done)" )
+            done
+        else
+            __compdescribe_describe=()
+        fi
+
+    elif [ "$arg1" = -g ]; then
+        if (( __compdescribe_index > ${#__compdescribe_args[@]} )); then
+            return 1
+        fi
+
+        printf -v "$1" "${compstate[list]}"
+        eval "$2=( ${__compdescribe_args[$__compdescribe_index]} )"
+        eval "$3=( ${__compdescribe_matches[$__compdescribe_index]} )"
+        eval "$4=( ${__compdescribe_describe[$__compdescribe_index]} )"
+        (( __compdescribe_index++ ))
+    fi
+    return 0
+}
+
 _fzf_completion_compadd() {
     local __flags=()
     local __OAD=()
@@ -339,6 +393,9 @@ _fzf_completion_compadd() {
 
 # do not allow grouping, it stuffs up display strings
 zstyle ":completion:*:*" list-grouped no
+
+# reimplement compdescribe, it keeps segfaulting when it receives a signal
+compdescribe() { _fzf_completion_compdescribe "$@"; }
 
 _fzf_completion_override_compadd() { compadd() { _fzf_completion_compadd "$@"; }; }
 _fzf_completion_override_compadd

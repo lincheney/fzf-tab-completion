@@ -227,49 +227,73 @@ _fzf_completion_pre_selector() {
 }
 
 _fzf_completion_compdescribe() {
-    local __sep __opts
     local arg1="$1"
     shift
 
     if [ "$arg1" = -i -o "$arg1" = -I ]; then
+        # hide prefixes?
+        local __hide="$1"
+        if [ "$__hide" = -- ]; then
+            __hide='--\|[-+]'
+        fi
+        # local __mlen="$2"
         shift 2
+
+        local __sep __opts
         if [ "$arg1" = -I ]; then
             __sep="$1"
-            __opts="$(printf '%q ' "${${(P)2}[@]}")"
+            __opts="-l $(printf '%q ' "${${(P)2}[@]}")"
             shift 2
         fi
         __compdescribe_index=1
         local __arrays=()
+        local __lhs=()
 
         while (( $# )); do
             __arrays+=( "$1" )
-            __compdescribe_matches+=( "$(printf %s\\n "${${(P)1}[@]}" | while IFS=: read m d; do printf '%q ' "$m"; done)" )
+            __lhs+=( "$(printf %s\\n "${${(P)1}[@]}" | while IFS=: read lhs rhs; do printf '%q ' "$lhs"; done)" )
+            if [[ "${2--}" == -* ]]; then
+                # next arg is --flag, so use values from first array
+                __compdescribe_matches+=( "${__lhs[-1]}" )
+            else
+                # next arg is array of actual matches
+                shift
+                __compdescribe_matches+=( "$(printf '%q ' "${${(P)1}[@]}")" )
+            fi
             shift
 
-            local __args=
-            while [ "$#" -gt 0 -a "$1" != -- ]; do
-                __args+="$(printf '%q ' "$1")"
-                shift
-            done
-            shift
-            __compdescribe_args+=( "$__opts $__args" )
+            # grab all args until the next --
+            local index=${@[(ie)--]}
+            __compdescribe_args+=( "$__opts $(printf '%q ' "${@:1:$index-1}")" )
+            set -- "${@:$index+1}"
         done
 
+        local a
+        local padding=0
         if [ "$arg1" = -I ]; then
-            local padding="$(eval "printf '%s\\n' ${__compdescribe_matches[*]}" | awk '{print length}' | sort -nr | head -n1)"
-            local a
-            for a in "${__arrays[@]}"; do
-                __compdescribe_describe+=( "$(printf %s\\n "${${(P)a}[@]}" | while IFS=: read m d; do printf '%q%q ' "${(r:$padding:)m} " "${d:+${__sep}}$d"; done)" )
-            done
-        else
-            __compdescribe_describe=()
+            # get longest LHS string so we can line it up
+            padding="$(eval "printf '%s\\n' ${__lhs[*]}" | awk '{print length+1}' | sort -nr | head -n1)"
         fi
+        for a in "${__arrays[@]}"; do
+            __compdescribe_describe+=( "$(
+                # format lhs+rhs from array, then strip prefix
+                printf %s\\n "${${(P)a}[@]}" \
+                | while IFS=: read lhs rhs; do
+                    # blank the RHS string if we are not displaying
+                    [ "$arg1" != -I ] && rhs=
+                    printf '%q%q \n' "${(r:$padding:)lhs}" "${rhs:+${__sep}}$rhs"
+                done \
+                | sed "s/^$__hide//" \
+                | tr -d \\n
+            )" )
+        done
 
     elif [ "$arg1" = -g ]; then
         if (( __compdescribe_index > ${#__compdescribe_args[@]} )); then
             return 1
         fi
 
+        # places values into the given variable names
         printf -v "$1" "${compstate[list]}"
         eval "$2=( ${__compdescribe_args[$__compdescribe_index]} )"
         eval "$3=( ${__compdescribe_matches[$__compdescribe_index]} )"

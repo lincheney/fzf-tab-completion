@@ -23,10 +23,10 @@ fzf_completion() {
     coproc (
         lines=()
         while IFS= read -r line; do
-            lines+=( "$line" )
             if [ "$line" = return ]; then
                 break
             fi
+            lines+=( "$line" )
         done
         printf %s\\n "${lines[@]}"
     )
@@ -151,7 +151,7 @@ _fzf_completion_compadd_matches() {
     compstate[insert]=unambiguous
 
     # eval everything from sponge
-    source <(cat <&p)
+    eval "$(cat <&p)"
     case "$code" in
         0)
             local opts index

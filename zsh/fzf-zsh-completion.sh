@@ -251,7 +251,11 @@ _fzf_completion_compdescribe() {
 
         while (( $# )); do
             __arrays+=( "$1" )
-            __lhs+=( "$(printf %s\\n "${${(P)1}[@]}" | while IFS=: read lhs rhs; do printf '%q ' "$lhs"; done)" )
+            if (( ${#${(P)1}[@]} )); then
+                __lhs+=( "$(printf %s\\n "${${(P)1}[@]}" | while IFS=: read lhs rhs; do printf '%q ' "$lhs"; done)" )
+            else
+                __lhs+=( '' )
+            fi
             if [[ "${2--}" == -* ]]; then
                 # next arg is --flag, so use values from first array
                 __compdescribe_matches+=( "${__lhs[-1]}" )

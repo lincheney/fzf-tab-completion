@@ -134,7 +134,7 @@ _fzf_completion_gen_matches() {
 }
 
 _fzf_completion_compadd_matches() {
-    local code value stderr
+    local code value __stderr
     # prevent tabs being inserted even when no cancelled
     compstate[insert]=unambiguous
 
@@ -159,8 +159,8 @@ _fzf_completion_compadd_matches() {
             if (( ! ${#__compadd_args[@]} )) && zstyle -s :completion:::::warnings format msg; then
                 builtin compadd -x "$msg"
                 # display stderr as well
-                builtin compadd -x "${stderr//\%/%%}"
-                stderr=
+                builtin compadd -x "${__stderr//\%/%%}"
+                __stderr=
             fi
             ;;
     esac
@@ -169,7 +169,7 @@ _fzf_completion_compadd_matches() {
     # so call it after this function returns
     eval "TRAPEXIT() {
         zle reset-prompt
-        _fzf_completion_post ${(q)stderr} ${(q)code}
+        _fzf_completion_post ${(q)__stderr} ${(q)code}
     }"
 }
 

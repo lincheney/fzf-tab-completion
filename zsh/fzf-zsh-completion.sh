@@ -34,14 +34,14 @@ fzf_completion() {
 
     # generate (_main_complete) and select (fzf) the matches
     # we can't run the compadds in this widget because the SIGINT causes it to fail
-    zle _fzf_completion_gen_matches
+    _fzf_completion_gen_matches
 
     # end coproc
     echo return >&p 2>/dev/null
     kill -- -"$__coproc_pid" 2>/dev/null && wait "$__coproc_pid"
 
     # actually compadd the matches selected
-    zle _fzf_completion_compadd_matches
+    _fzf_completion_compadd_matches
 
     # shutdown the coproc and hide from job table
     coproc :
@@ -55,75 +55,67 @@ _fzf_completion_gen_matches() {
     # in particular SIGINT to indicate fzf has quit so we can stop looking or more matches
 
     local __main_pid="$$"
-    local __fzf_is_done=0
     local __fzf_pid
     () {
         # shield from USR1
         TRAPUSR1() { :; }
         () {
-            # shield from INT
-            TRAPINT() { __fzf_is_done=1; }
-
             exec {_fzf_compadd}> >(
                 local lines=()
                 local code value
                 exec < <(awk -F"$_FZF_COMPLETION_SEP" '$1!="" && !x[$1]++ { print $0; system("") }')
-                {
-                    _fzf_completion_pre_selector
-                    if (( code > 0 )); then
-                        # error, return immediately
-                        printf 'code=%q\nreturn\n' "$code" >&p
 
-                    elif (( ${#lines[@]} == 1 )); then
-                        # only one, return that
-                        printf 'value=%q\ncode=%q\nreturn\n' "${lines[1]}" "$code" >&p
+                _fzf_completion_pre_selector
+                if (( code > 0 )); then
+                    # error, return immediately
+                    printf 'code=%q\nreturn\n' "$code" >&p
 
-                    else
-                        # more than one, actually invoke fzf
-                        local context field=2
-                        context="${compstate[context]//_/-}"
-                        context="${context:+-$context-}"
-                        if [ "$context" = -command- -a "$CURRENT" -gt 1 ]; then
-                            context="${words[1]}"
-                        fi
-                        context=":completion::complete:${context:-*}::${(j-,-)words[@]}"
+                elif (( ${#lines[@]} == 1 )); then
+                    # only one, return that
+                    printf 'value=%q\ncode=%q\nreturn\n' "${lines[1]}" "$code" >&p
 
-                        if zstyle -t "$context" fzf-search-display; then
-                            field=2..5
-                        fi
-
-                        local flags=() fzf
-                        zstyle -a "$context" fzf-completion-opts flags
-                        fzf="$(__fzfcmd 2>/dev/null)"
-
-                        # turn off show-completer so it doesn't interfere
-                        kill -USR1 -- "$__main_pid"
-
-                        tput cud1 >/dev/tty # fzf clears the line on exit so move down one
-                        value="$(
-                            FZF_DEFAULT_OPTS="--height ${FZF_TMUX_HEIGHT:-40%} --reverse $FZF_DEFAULT_OPTS $FZF_COMPLETION_OPTS" \
-                            "${fzf:-fzf}" --ansi --prompt "> $PREFIX" -d "$_FZF_COMPLETION_SEP" --with-nth 4..6 --nth "$field" "${flags[@]}" \
-                                < <(printf %s\\n "${lines[@]}"; cat) 2>/dev/tty
-                        )"
-                        code="$?"
-                        tput cuu1 >/dev/tty
-
-                        printf 'value=%q\ncode=%q\nreturn\n' "$value" "$code" >&p
+                else
+                    # more than one, actually invoke fzf
+                    local context field=2
+                    context="${compstate[context]//_/-}"
+                    context="${context:+-$context-}"
+                    if [ "$context" = -command- -a "$CURRENT" -gt 1 ]; then
+                        context="${words[1]}"
                     fi
-                } always {
-                    # fzf is done, kill main process
-                    kill -INT -- -"$__main_pid"
-                }
+                    context=":completion::complete:${context:-*}::${(j-,-)words[@]}"
+
+                    if zstyle -t "$context" fzf-search-display; then
+                        field=2..5
+                    fi
+
+                    local flags=() fzf
+                    zstyle -a "$context" fzf-completion-opts flags
+                    fzf="$(__fzfcmd 2>/dev/null)"
+
+                    # turn off show-completer so it doesn't interfere
+                    # kill -USR1 -- "$__main_pid"
+
+                    tput cud1 >/dev/tty # fzf clears the line on exit so move down one
+                    value="$(
+                        FZF_DEFAULT_OPTS="--height ${FZF_TMUX_HEIGHT:-40%} --reverse $FZF_DEFAULT_OPTS $FZF_COMPLETION_OPTS" \
+                        "${fzf:-fzf}" --ansi --prompt "> $PREFIX" -d "$_FZF_COMPLETION_SEP" --with-nth 4..6 --nth "$field" "${flags[@]}" \
+                            < <(printf %s\\n "${lines[@]}"; cat) 2>/dev/tty
+                    )"
+                    code="$?"
+                    tput cuu1 >/dev/tty
+
+                    printf 'value=%q\ncode=%q\nreturn\n' "$value" "$code" >&p
+                fi
+
+                # kill any completion processes, but NOT this process and NOT the main process
+                kill -TERM -- $(pgrep -g "$__main_pid" | fgrep -vx -e "$__main_pid" -e "$$") &>/dev/null
             )
             __fzf_pid="$!"
 
             local __show_completer_style="$(zstyle -L ':completion:*' show-completer)"
             {
-                TRAPUSR1() {
-                    # turn off show-completer
-                    eval "$(echo "$__show_completer_style" | sed 's/^zstyle /& -d /')"
-                    zstyle ':completion:*' show-completer false
-                }
+                zstyle ':completion:*' show-completer false
+                zle -R 'Loading matches ...'
 
                 # pipe stdout+stderr into the sponge coproc
                 _main_complete > >(while IFS= read -r line; do
@@ -137,11 +129,7 @@ _fzf_completion_gen_matches() {
             }
         }
 
-        # this is either unreachable (SIGINT-ed above) or will be SIGINT-ed itself
-        if (( ! __fzf_is_done )); then
-            wait "$__fzf_pid"
-            # sleep infinity
-        fi
+        wait "$__fzf_pid"
     }
 }
 
@@ -224,87 +212,6 @@ _fzf_completion_pre_selector() {
             fi
         fi
     done
-}
-
-_fzf_completion_compdescribe() {
-    local arg1="$1"
-    shift
-
-    if [ "$arg1" = -i -o "$arg1" = -I ]; then
-        # hide prefixes?
-        local __hide="$1"
-        if [ "$__hide" = -- ]; then
-            __hide='--\|[-+]'
-        fi
-        # local __mlen="$2"
-        shift 2
-
-        local __sep __opts
-        if [ "$arg1" = -I ]; then
-            __sep="$1"
-            __opts="-l $(printf '%q ' "${${(P)2}[@]}")"
-            shift 2
-        fi
-        __compdescribe_index=1
-        local __arrays=()
-        local __lhs=()
-
-        while (( $# )); do
-            __arrays+=( "$1" )
-            if (( ${#${(P)1}[@]} )); then
-                __lhs+=( "$(printf %s\\n "${${(P)1}[@]}" | while IFS=: read lhs rhs; do printf '%q ' "$lhs"; done)" )
-            else
-                __lhs+=( '' )
-            fi
-            if [[ "${2--}" == -* ]]; then
-                # next arg is --flag, so use values from first array
-                __compdescribe_matches+=( "${__lhs[-1]}" )
-            else
-                # next arg is array of actual matches
-                shift
-                __compdescribe_matches+=( "$(printf '%q ' "${${(P)1}[@]}")" )
-            fi
-            shift
-
-            # grab all args until the next --
-            local index=${@[(ie)--]}
-            __compdescribe_args+=( "$__opts $(printf '%q ' "${@:1:$index-1}")" )
-            set -- "${@:$index+1}"
-        done
-
-        local a
-        local padding=0
-        if [ "$arg1" = -I ]; then
-            # get longest LHS string so we can line it up
-            padding="$(eval "printf '%s\\n' ${__lhs[*]}" | awk '{print length+1}' | sort -nr | head -n1)"
-        fi
-        for a in "${__arrays[@]}"; do
-            __compdescribe_describe+=( "$(
-                # format lhs+rhs from array, then strip prefix
-                printf %s\\n "${${(P)a}[@]}" \
-                | while IFS=: read lhs rhs; do
-                    # blank the RHS string if we are not displaying
-                    [ "$arg1" != -I ] && rhs=
-                    printf '%q%q \n' "${(r:$padding:)lhs}" "${rhs:+${__sep}}$rhs"
-                done \
-                | sed "s/^$__hide//" \
-                | tr -d \\n
-            )" )
-        done
-
-    elif [ "$arg1" = -g ]; then
-        if (( __compdescribe_index > ${#__compdescribe_args[@]} )); then
-            return 1
-        fi
-
-        # places values into the given variable names
-        printf -v "$1" "${compstate[list]}"
-        eval "$2=( ${__compdescribe_args[$__compdescribe_index]} )"
-        eval "$3=( ${__compdescribe_matches[$__compdescribe_index]} )"
-        eval "$4=( ${__compdescribe_describe[$__compdescribe_index]} )"
-        (( __compdescribe_index++ ))
-    fi
-    return 0
 }
 
 _fzf_completion_compadd() {
@@ -417,16 +324,17 @@ _fzf_completion_compadd() {
         fi
 
         # fullvalue, value, index, prefix, show, display
-        printf %s\\n "${prefix}${__real_str}${__suffix}${_FZF_COMPLETION_SEP}${(q)__hit_str}${_FZF_COMPLETION_SEP}${__comp_index}${_FZF_COMPLETION_SEP}${__show_str}${_FZF_COMPLETION_SEP}${__disp_str}" >&"${_fzf_compadd}" 2>/dev/null
+        if ! printf %s\\n "${prefix}${__real_str}${__suffix}${_FZF_COMPLETION_SEP}${(q)__hit_str}${_FZF_COMPLETION_SEP}${__comp_index}${_FZF_COMPLETION_SEP}${__show_str}${_FZF_COMPLETION_SEP}${__disp_str}" >&"${_fzf_compadd}" 2>/dev/null; then
+            # if this printf fails it means &_fzf_compadd is closed, so fzf has stopped running
+            kill -INT -- -"$__main_pid"
+            return 255
+        fi
     done
     return "$code"
 }
 
 # do not allow grouping, it stuffs up display strings
 zstyle ":completion:*:*" list-grouped no
-
-# reimplement compdescribe, it keeps segfaulting when it receives a signal
-compdescribe() { _fzf_completion_compdescribe "$@"; }
 
 _fzf_completion_override_compadd() { compadd() { _fzf_completion_compadd "$@"; }; }
 _fzf_completion_override_compadd
@@ -448,7 +356,5 @@ else
     _fzf_completion_override_approximate
 fi
 
-zle -C _fzf_completion_gen_matches complete-word _fzf_completion_gen_matches
-zle -C _fzf_completion_compadd_matches complete-word _fzf_completion_compadd_matches
-zle -N fzf_completion
+zle -C fzf_completion complete-word fzf_completion
 fzf_default_completion=fzf_completion

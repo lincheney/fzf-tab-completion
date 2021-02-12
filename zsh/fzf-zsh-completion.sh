@@ -72,6 +72,7 @@ fzf_completion() {
         printf 'code=%q; value=%q\n' "$code" "$value"
     )" 2>/dev/null
 
+    compstate[insert]=unambiguous
     case "$code" in
         0)
             local opts index

@@ -19,7 +19,8 @@ _fzf_bash_completion_shell_split() {
 }
 
 _fzf_bash_completion_unbuffered_awk() {
-    awk "${@:3}" "$1 { $2; print \$0; system(\"\") }"
+    # need to get awk to be unbuffered either by using -W interactive or system("")
+    awk -W interactive "${@:3}" "$1 { $2; print \$0; system(\"\") }" 2>/dev/null
 }
 
 _fzf_bash_completion_flatten_subshells() {

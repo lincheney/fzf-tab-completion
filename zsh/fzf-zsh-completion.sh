@@ -62,7 +62,8 @@ fzf_completion() {
                     _main_complete 2>&1
                 )"
                 printf %s\\n "stderr=${(q)stderr}" >&"${__evaled}"
-            ) | awk -F"$_FZF_COMPLETION_SEP" '$1!="" && !x[$1]++ { print $0; system("") }'
+            # need to get awk to be unbuffered either by using -W interactive or system("")
+            ) | awk -W interactive -F"$_FZF_COMPLETION_SEP" '$1!="" && !x[$1]++ { print $0; system("") }' 2>/dev/null
         )
         coproc_pid="$!"
         value="$(_fzf_completion_selector <&p)"

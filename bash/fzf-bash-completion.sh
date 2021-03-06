@@ -252,7 +252,7 @@ fzf_bash_completer() {
                 while (( $? == 124 )); do
                     _fzf_bash_completion_get_results "$@"
                 done
-            ) | _fzf_bash_completion_unbuffered_awk '$0!="" && !x[$0]++' 'sub(find, replace)' -vfind="^.{${#__unquoted}}" -vreplace="&$_FZF_COMPLETION_SEP"
+            ) | _fzf_bash_completion_unbuffered_awk '$0!="" && !x[$0]++' '$0 = substr($0, 1, len) sep substr($0, len+1)' -vlen="${#__unquoted}" -vsep="$_FZF_COMPLETION_SEP"
         )
         value="$(_fzf_bash_completion_selector "$1" "$__unquoted" "$3" <&"${COPROC[0]}")"
         code="$?"

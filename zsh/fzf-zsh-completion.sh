@@ -56,7 +56,7 @@ fzf_completion() {
                 stderr="$(
                     _fzf_completion_preexit() {
                         echo set -A _comps "${(qkv)_comps[@]}" >&"${__evaled}"
-                        functions + | fgrep -vx -e "$(functions -u +)" -e "$full_functions" | while read -r f; do which "$f"; done >&"${__evaled}"
+                        functions + | fgrep -vx -e "$(functions -u +)" -e "$full_functions" | while read -r f; do which -- "$f"; done >&"${__evaled}"
                     }
                     trap _fzf_completion_preexit EXIT TERM
                     _main_complete 2>&1

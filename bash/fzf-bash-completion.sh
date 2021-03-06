@@ -5,7 +5,7 @@ _fzf_bash_completion_awk_escape() {
 }
 
 # shell parsing stuff
-_fzf_bash_completion_egrep="$(which rg || which ag || echo egrep)" 2>/dev/null
+_fzf_bash_completion_egrep="$( { which rg || which ag || echo egrep; } 2>/dev/null)"
 
 _fzf_bash_completion_shell_split() {
     "$_fzf_bash_completion_egrep" -o \

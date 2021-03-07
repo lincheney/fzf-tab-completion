@@ -423,15 +423,21 @@ _fzf_bash_completion_complete() {
 }
 
 _fzf_bash_completion_apply_xfilter() {
-    local pattern line
+    if [ -z "$1" ]; then
+        cat
+        return
+    fi
+
+    local pattern line word="$cur"
+    word="${word//\//\\/}"
+    word="${word//&/\\&}"
+    # replace any unescaped & with the word being completed
+    pattern="$(sed 's/\(\(^\|[^\]\)\(\\\\\)*\)&/\1'"$word"'/g' <<<"${1:1}")"
+
     if [ "${1::1}" = ! ]; then
-        pattern="$(sed 's/\(\(^\|[^\]\)\(\\\\\)*\)&/\1x/g' <<<"${1:1}")"
         while IFS= read -r line; do [[ "$line" == $pattern ]] && echo "$line"; done
     elif [ -n "$1" ]; then
-        pattern="$(sed 's/\(\(^\|[^\]\)\(\\\\\)*\)&/\1x/g' <<<"$1")"
         while IFS= read -r line; do [[ "$line" != $pattern ]] && echo "$line"; done
-    else
-        cat
     fi
 }
 

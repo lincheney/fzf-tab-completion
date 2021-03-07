@@ -426,10 +426,10 @@ _fzf_bash_completion_apply_xfilter() {
     local pattern line
     if [ "${1::1}" = ! ]; then
         pattern="$(sed 's/\(\(^\|[^\]\)\(\\\\\)*\)&/\1x/g' <<<"${1:1}")"
-        while IFS= read -r line; do [[ "$line" != $pattern ]] && echo "$line"; done
+        while IFS= read -r line; do [[ "$line" == $pattern ]] && echo "$line"; done
     elif [ -n "$1" ]; then
         pattern="$(sed 's/\(\(^\|[^\]\)\(\\\\\)*\)&/\1x/g' <<<"$1")"
-        while IFS= read -r line; do [[ "$line" == $pattern ]] && echo "$line"; done
+        while IFS= read -r line; do [[ "$line" != $pattern ]] && echo "$line"; done
     else
         cat
     fi

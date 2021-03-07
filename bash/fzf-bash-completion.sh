@@ -119,6 +119,24 @@ EOF
         | tr \\0 \\n
 }
 
+_fzf_bash_completion_compspec() {
+    complete -p -- "$1" || complete -p '' | echo complete -o filenames -F _fzf_bash_completion_fallback_completer
+}
+
+_fzf_bash_completion_fallback_completer() {
+    # fallback completion in case no compspecs loaded
+    if [[ "$1" == \~* && "$1" != */* ]]; then
+        # complete ~user directories
+        readarray -t COMPREPLY < <(compgen -P '~' -u -- "${1#\~}")
+    elif [[ "$1" == */ ]]; then
+        # complete files but NOT hidden files
+        readarray -t COMPREPLY < <(compgen -f -- "$1" | sed '/\.[^/]*$/d')
+    else
+        # everything else
+        readarray -t COMPREPLY < <(compgen -f -- "$1")
+    fi
+}
+
 _fzf_bash_completion_loading_msg() {
     echo 'Loading matches ...'
 }
@@ -289,7 +307,7 @@ fzf_bash_completer() {
 
 _fzf_bash_completion_complete() {
     local compgen_actions=()
-    local compspec="$(complete -p -- "$1" 2>/dev/null || complete -p '')"
+    local compspec="$(_fzf_bash_completion_compspec 2>/dev/null)"
 
     eval "compspec=( $compspec )"
     set -- "${compspec[@]}" "$@"
@@ -335,7 +353,7 @@ _fzf_bash_completion_complete() {
     if [ -n "$compl_function" ]; then
         "$compl_function" "$@" >/dev/null
         if [ "$?" = 124 ]; then
-            local newcompspec="$(complete -p -- "$1" 2>/dev/null || complete -p '')"
+            local newcompspec="$(_fzf_bash_completion_compspec 2>/dev/null)"
             if [ "$newcompspec" != "$compspec" ]; then
                 return 124
             fi
@@ -418,14 +436,13 @@ _fzf_bash_completion_apply_xfilter() {
 }
 
 _fzf_bash_completion_dir_marker() {
+    local line
     while IFS= read -r line; do
         # adapted from __expand_tilde_by_ref
-        if [[ "$line" == \~*/* ]]; then
-            eval expanded="${line/%\/*}"/'${line#*/}';
-        elif [[ "$line" == \~* ]]; then
-            eval expanded="$line";
+        if [[ "$line" == \~* ]]; then
+            eval "$(printf expanded=~%q "${line:1}")"
         fi
-        [ -d "${expanded:-$line}" ] && line="$line/"
+        [ -d "${expanded-"$line"}" ] && line="$line/"
         echo "$line"
     done
 }

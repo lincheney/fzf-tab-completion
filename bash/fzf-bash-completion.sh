@@ -128,11 +128,8 @@ _fzf_bash_completion_fallback_completer() {
     if [[ "$1" == \~* && "$1" != */* ]]; then
         # complete ~user directories
         readarray -t COMPREPLY < <(compgen -P '~' -u -- "${1#\~}")
-    elif [[ "$1" == */ ]]; then
-        # complete files but NOT hidden files
-        readarray -t COMPREPLY < <(compgen -f -- "$1" | sed '/\.[^/]*$/d')
     else
-        # everything else
+        # complete files
         readarray -t COMPREPLY < <(compgen -f -- "$1")
     fi
 }

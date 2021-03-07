@@ -120,7 +120,7 @@ EOF
 }
 
 _fzf_bash_completion_compspec() {
-    complete -p -- "$1" || complete -p '' | echo complete -o filenames -F _fzf_bash_completion_fallback_completer
+    complete -p -- "$1" || complete -p '' || echo complete -o filenames -F _fzf_bash_completion_fallback_completer
 }
 
 _fzf_bash_completion_fallback_completer() {

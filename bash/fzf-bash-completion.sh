@@ -304,7 +304,7 @@ fzf_bash_completer() {
 
 _fzf_bash_completion_complete() {
     local compgen_actions=()
-    local compspec="$(_fzf_bash_completion_compspec 2>/dev/null)"
+    local compspec="$(_fzf_bash_completion_compspec "$1" 2>/dev/null)"
 
     eval "compspec=( $compspec )"
     set -- "${compspec[@]}" "$@"
@@ -350,7 +350,7 @@ _fzf_bash_completion_complete() {
     if [ -n "$compl_function" ]; then
         "$compl_function" "$@" >/dev/null
         if [ "$?" = 124 ]; then
-            local newcompspec="$(_fzf_bash_completion_compspec 2>/dev/null)"
+            local newcompspec="$(_fzf_bash_completion_compspec "$1" 2>/dev/null)"
             if [ "$newcompspec" != "$compspec" ]; then
                 return 124
             fi

@@ -67,20 +67,23 @@ This allows you to have different options based on the command being completed
 
 This is most useful for changing the `--preview` option.
 Use `{1}` for the selected text (or `{+1}` if using multi-select).
+Note `{1}` or `{+1}` will come through "shell-escaped", so you will need to unescape it, e.g. using `eval` or `printf %b`
 
 ```bash
 # basic file preview for ls (you can replace with something more sophisticated than head)
-zstyle ':completion::*:ls::*' fzf-completion-opts --preview='head {1}'
+zstyle ':completion::*:ls::*' fzf-completion-opts --preview='eval head {1}'
 
 # preview when completing env vars (note: only works for exported variables)
-zstyle ':completion::*:(-command-|-parameter-|-brace-parameter-|export|unset|expand):*' fzf-completion-opts --preview='eval echo {1}'
+# eval twice, first to unescape the string, second to expand the $variable
+zstyle ':completion::*:(-command-|-parameter-|-brace-parameter-|export|unset|expand):*' fzf-completion-opts --preview='eval eval echo {1}'
 
 # preview a `git status` when completing git add
 zstyle ':completion::*:git::git,add,*' fzf-completion-opts --preview='git -c color.status=always status --short'
 
 # if other subcommand to git is given, show a git diff or git log
 zstyle ':completion::*:git::*,[a-z]*' fzf-completion-opts --preview='
-for arg in {+1}; do
+eval set -- {+1}
+for arg in "$@"; do
     { git diff --color=always -- "$arg" | git log --color=always "$arg" } 2>/dev/null
 done'
 ```

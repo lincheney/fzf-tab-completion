@@ -162,7 +162,7 @@ _fzf_completion_selector() {
 _fzf_completion_compadd() {
     local __flags=()
     local __OAD=()
-    local __disp __hits __ipre __apre __hpre __hsuf __asuf __isuf
+    local __disp __hits __ipre __apre __hpre __hsuf __asuf __isuf __opts __optskv
     zparseopts -D -E -a __opts -A __optskv -- "${^_FZF_COMPLETION_FLAGS[@]}+=__flags" F+: P:=__apre S:=__asuf o+: p:=__hpre s:=__hsuf i:=__ipre I:=__isuf W+: d:=__disp J+: V+: X+: x+: r+: R+: D+: O+: A+: E+: M+:
     local __filenames="${__flags[(r)-f]}"
     local __noquote="${__flags[(r)-Q]}"

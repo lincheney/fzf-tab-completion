@@ -39,11 +39,11 @@ _fzf_bash_completion_flatten_subshells() {
             elif (( count > 0 )); then
                 buffer="$line$buffer"
             else
-                echo "$line$buffer"
+                printf '%s\n' "$line$buffer"
                 buffer=
             fi
         done
-        echo -n "$buffer"
+        printf '%s\n' "$buffer"
     ) | tac
 }
 
@@ -53,7 +53,7 @@ _fzf_bash_completion_find_matching_bracket() {
         if [ "$bracket" = "$1" ]; then
             (( count++ ))
             if (( count > 0 )); then
-                echo "$num"
+                printf '%s\n' "$num"
                 return 0
             fi
         else
@@ -86,12 +86,12 @@ _fzf_bash_completion_parse_dq() {
             split="$(<<<"$shell" _fzf_bash_completion_shell_split)"
             if ! split="$(_fzf_bash_completion_parse_dq <<<"$split")"; then
                 # bubble up
-                echo "$split"
+                printf '%s\n' "$split"
                 return 1
             fi
             if ! num="$(_fzf_bash_completion_find_matching_bracket ')' <<<"$split")"; then
                 # subshell not closed, this is it
-                echo "$split"
+                printf '%s\n' "$split"
                 return 1
             fi
             # subshell closed
@@ -100,7 +100,7 @@ _fzf_bash_completion_parse_dq() {
             shell="${shell:${#joined}}"
         done
     fi
-    echo "$words"
+    printf '%s\n' "$words"
 }
 
 _fzf_bash_completion_parse_line() {
@@ -122,7 +122,7 @@ EOF
 }
 
 _fzf_bash_completion_compspec() {
-    complete -p -- "$1" || complete -p '' || echo complete -o filenames -F _fzf_bash_completion_fallback_completer
+    complete -p -- "$1" || complete -p '' || printf '%s\n' 'complete -o filenames -F _fzf_bash_completion_fallback_completer'
 }
 
 _fzf_bash_completion_fallback_completer() {
@@ -215,7 +215,7 @@ _fzf_bash_completion_get_results() {
         compgen -v -P "$prefix" -S "${brace:+\}}" -- "$filter"
     elif [ "$COMP_CWORD" == 0 ]; then
         # commands
-        echo compl_filenames=1 >&"${__evaled}"
+        printf '%s\n' compl_filenames=1 >&"${__evaled}"
         compgen -abc -- "$2" | _fzf_bash_completion_dir_marker
     elif [[ "$2" == *"$trigger" ]]; then
         # replicate fzf ** trigger completion
@@ -241,7 +241,7 @@ _fzf_bash_completion_get_results() {
             flags+=( -path "$prefix$suffix*" )
         fi
 
-        echo compl_filenames=1 >&"${__evaled}"
+        printf '%s\n' compl_filenames=1 >&"${__evaled}"
         find -L "$prefix" -mindepth 1 "${flags[@]}" \( -type d -printf "%p/\n" , -type f -print \) 2>/dev/null | "$_fzf_bash_completion_sed" 's,^\./,,'
     else
         _fzf_bash_completion_complete "$@"
@@ -284,7 +284,7 @@ fzf_bash_completer() {
             if [ "$compl_noquote" != 1 -a "$compl_filenames" = 1 ]; then
                 while IFS= read -r line; do
                     if [ "$line" = "$2" ]; then
-                        echo "$line"
+                        printf '%s\n' "$line"
                     # never quote the prefix
                     elif [ "${line::${#2}}" = "$2" ]; then
                         printf '%s%q\n' "$2" "${line:${#2}}"
@@ -393,16 +393,16 @@ _fzf_bash_completion_complete() {
                 (
                     unset COMP_WORDS COMP_CWORD
                     export COMP_LINE="$COMP_LINE" COMP_POINT="$COMP_POINT" COMP_KEY="$COMP_KEY" COMP_TYPE="$COMP_TYPE"
-                    compl_command="$(eval "echo $compl_command")"
+                    compl_command="$(eval "printf '%s\n' \"$compl_command\"")"
                     $compl_command "$@"
                 )
             fi
 
-            echo
+            printf '%s\n'
         ) | _fzf_bash_completion_apply_xfilter "$compl_xfilter" \
           | _fzf_bash_completion_unbuffered_awk '$0!=""' 'sub(find, replace)' -vfind='.*' -vreplace="$(printf %s "$compl_prefix" | "$_fzf_bash_completion_sed" 's/[&\]/\\&/g')&$(printf %s "$compl_suffix" | "$_fzf_bash_completion_sed" 's/[&\]/\\&/g')" \
           | if IFS= read -r line; then
-                echo "$line"; cat
+                printf '%s\n' "$line"; cat
             else
                 local compgen_opts=()
                 [ "$compl_bashdefault" = 1 ] && compgen_opts+=( -o bashdefault )
@@ -434,9 +434,9 @@ _fzf_bash_completion_apply_xfilter() {
     pattern="$("$_fzf_bash_completion_sed" 's/\(\(^\|[^\]\)\(\\\\\)*\)&/\1'"$word"'/g' <<<"${1:1}")"
 
     if [ "${1::1}" = ! ]; then
-        while IFS= read -r line; do [[ "$line" == $pattern ]] && echo "$line"; done
+        while IFS= read -r line; do [[ "$line" == $pattern ]] && printf '%s\n' "$line"; done
     elif [ -n "$1" ]; then
-        while IFS= read -r line; do [[ "$line" != $pattern ]] && echo "$line"; done
+        while IFS= read -r line; do [[ "$line" != $pattern ]] && printf '%s\n' "$line"; done
     fi
 }
 
@@ -448,7 +448,7 @@ _fzf_bash_completion_dir_marker() {
             eval "$(printf expanded=~%q "${line:1}")"
         fi
         [ -d "${expanded-"$line"}" ] && line="$line/"
-        echo "$line"
+        printf '%s\n' "$line"
     done
 }
 

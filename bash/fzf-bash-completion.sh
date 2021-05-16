@@ -28,7 +28,7 @@ _fzf_bash_completion_unbuffered_awk() {
 _fzf_bash_completion_flatten_subshells() {
     (
         local count=0 buffer=
-        tac | while IFS= read -r line; do
+        while IFS= read -r line; do
             case "$line" in
                 \(|\{) (( count -- )) ;;
                 \)|\}) (( count ++ )) ;;
@@ -42,7 +42,7 @@ _fzf_bash_completion_flatten_subshells() {
                 printf '%s\n' "$line$buffer"
                 buffer=
             fi
-        done
+        done < <(tac)
         printf '%s\n' "$buffer"
     ) | tac
 }

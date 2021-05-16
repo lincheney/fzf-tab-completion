@@ -393,8 +393,7 @@ _fzf_bash_completion_complete() {
                 (
                     unset COMP_WORDS COMP_CWORD
                     export COMP_LINE="$COMP_LINE" COMP_POINT="$COMP_POINT" COMP_KEY="$COMP_KEY" COMP_TYPE="$COMP_TYPE"
-                    compl_command="$(eval "printf '%s\n' \"$compl_command\"")"
-                    $compl_command "$@"
+                    eval "$compl_command"
                 )
             fi
 

@@ -61,7 +61,7 @@ fzf_completion() {
                     trap _fzf_completion_preexit EXIT TERM
                     _main_complete 2>&1
                 )"
-                printf %s\\n "stderr=${(q)stderr}" >&"${__evaled}"
+                printf "stderr='%s'\\n" "${stderr//'/'\''}" >&"${__evaled}"
             # need to get awk to be unbuffered either by using -W interactive or system("")
             ) | awk -W interactive -F"$_FZF_COMPLETION_SEP" '$1!="" && !x[$1]++ { print $0; system("") }' 2>/dev/null
         )
@@ -70,7 +70,7 @@ fzf_completion() {
         code="$?"
         kill -- -"$coproc_pid" 2>/dev/null && wait "$coproc_pid"
 
-        printf 'code=%q; value=%q\n' "$code" "$value"
+        printf "code='%s'; value='%s'\\n" "${code//'/'\''}" "${value//'/'\''}"
     )" 2>/dev/null
 
     compstate[insert]=unambiguous
@@ -189,7 +189,8 @@ _fzf_completion_compadd() {
         __ipre=( -i "${__ipre[2]}" )
         IPREFIX=
     fi
-    printf '__compadd_args+=( %q )\n' "$(printf '%q ' PREFIX="$PREFIX" IPREFIX="$IPREFIX" SUFFIX="$SUFFIX" ISUFFIX="$ISUFFIX" compadd ${__flags:+-$__flags} "${__opts[@]}" "${__ipre[@]}" "${__apre[@]}" "${__hpre[@]}" "${__hsuf[@]}" "${__asuf[@]}" "${__isuf[@]}" -U)" >&"${__evaled}"
+    local compadd_args="$(printf '%q ' PREFIX="$PREFIX" IPREFIX="$IPREFIX" SUFFIX="$SUFFIX" ISUFFIX="$ISUFFIX" compadd ${__flags:+-$__flags} "${__opts[@]}" "${__ipre[@]}" "${__apre[@]}" "${__hpre[@]}" "${__hsuf[@]}" "${__asuf[@]}" "${__isuf[@]}" -U)"
+    printf "__compadd_args+=( '%s' )\n" "${compadd_args//'/'\''}" >&"${__evaled}"
     (( __comp_index++ ))
 
     local file_prefix="${__optskv[-W]:-.}"

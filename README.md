@@ -16,6 +16,7 @@ rather than [creating a new mechanism](https://github.com/junegunn/fzf/wiki/Exam
 ## Installation
 
 1. You need to [install fzf](https://github.com/junegunn/fzf#installation) first.
+1. On OSX, you also need to "homebrew install gawk".
 1. Clone this repository: `git clone https://github.com/lincheney/fzf-tab-completion ...`
     * you can also choose to download only the scripts you need, up to you.
 1. Follow instructions on how to set up for:

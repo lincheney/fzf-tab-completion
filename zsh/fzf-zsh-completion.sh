@@ -6,6 +6,13 @@ _FZF_COMPLETION_FLAGS=( a k f q Q e n U l 1 2 C )
 zmodload zsh/zselect
 zmodload zsh/system
 
+if command -v gawk &> /dev/null; then
+    # This needs to use gawk. Not nawk, which is the awk flavor on OS X.
+    AWK=gawk
+else;
+    AWK=awk
+fi
+
 fzf_completion() {
     emulate -LR zsh
     setopt interactivecomments
@@ -63,7 +70,7 @@ fzf_completion() {
                 )"
                 printf "stderr='%s'\\n" "${stderr//'/'\''}" >&"${__evaled}"
             # need to get awk to be unbuffered either by using -W interactive or system("")
-            ) | awk -W interactive -F"$_FZF_COMPLETION_SEP" '$1!="" && !x[$1]++ { print $0; system("") }' 2>/dev/null
+            ) | $AWK -W interactive -F"$_FZF_COMPLETION_SEP" '$1!="" && !x[$1]++ { print $0; system("") }' 2>/dev/null
         )
         coproc_pid="$!"
         value="$(_fzf_completion_selector <&p)"
@@ -195,7 +202,7 @@ _fzf_completion_compadd() {
 
     local file_prefix="${__optskv[-W]:-.}"
     local __disp_str __hit_str __show_str __real_str __suffix
-    local padding="$(printf %s\\n "${__disp[@]}" | awk '{print length}' | sort -nr | head -n1)"
+    local padding="$(printf %s\\n "${__disp[@]}" | $AWK '{print length}' | sort -nr | head -n1)"
     padding="$(( padding==0 ? 0 : padding>COLUMNS ? padding : COLUMNS ))"
 
     local prefix="${IPREFIX}${__ipre[2]}${__apre[2]}${__hpre[2]}"

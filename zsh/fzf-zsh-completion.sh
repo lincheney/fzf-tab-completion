@@ -197,7 +197,7 @@ _fzf_completion_compadd() {
 
     local file_prefix="${__optskv[-W]:-.}"
     local __disp_str __hit_str __show_str __real_str __suffix
-    local padding="$(printf %s\\n "${__disp[@]}" | $AWK '{print length}' | sort -nr | head -n1)"
+    local padding="$(printf %s\\n "${__disp[@]}" | "$_fzf_bash_completion_awk" '{print length}' | sort -nr | head -n1)"
     padding="$(( padding==0 ? 0 : padding>COLUMNS ? padding : COLUMNS ))"
 
     local prefix="${IPREFIX}${__ipre[2]}${__apre[2]}${__hpre[2]}"

@@ -9,7 +9,7 @@ zmodload zsh/system
 _fzf_bash_completion_awk="$( { which gawk || echo awk; } 2>/dev/null)"
 
 fzf_completion() {
-    emulate -LR zsh
+    emulate -LR zsh +o ALIASES
     setopt interactivecomments
     local value code stderr
     local __compadd_args=()

@@ -32,6 +32,12 @@ rather than [creating a new mechanism](https://github.com/junegunn/fzf/wiki/Exam
 
     Avoid changing these `fzf` flags: `-n`, `--nth`, `--with-nth`, `-d`
 
+## Fig
+
+Install `fzf-tab-completion` with [Fig](https://fig.io) on zsh, bash, or fish with just one click.
+
+<a href="https://fig.io/plugins/other/fzf-tab-completion_lincheney" target="_blank"><img src="https://fig.io/badges/install-with-fig.svg" /></a>
+
 ## zsh
 
 Add to your `~/.zshrc`:

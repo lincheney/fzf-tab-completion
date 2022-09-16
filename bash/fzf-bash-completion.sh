@@ -248,6 +248,42 @@ _fzf_bash_completion_get_results() {
     fi
 }
 
+_fzf_bash_completion_auto_common_prefix() {
+    if [ "$FZF_COMPLETION_AUTO_COMMON_PREFIX" = true ]; then
+        read -r prefix && items=("$prefix") || return
+        prefix_len="${#prefix}"
+        prefix_is_full=1 # prefix == item
+
+        input_len="$(( ${#1} + ${#_FZF_COMPLETION_SEP} ))"
+
+        while [ "$prefix_len" != "$input_len" ] && read -r item && items+=("$item"); do
+            for ((i=$input_len; i<$prefix_len; i++)); do
+                if [[ "${item:i:1}" != "${prefix:i:1}" ]]; then
+                    prefix_len="$i"
+                    unset prefix_is_full
+                    break
+                fi
+            done
+
+            if [ -z "$prefix_is_full" ] && [ -z "${item:i:1}" ]; then
+                prefix_is_full=1
+            fi
+        done
+
+        if [ "$prefix_len" != "$input_len" ]; then
+            if [ "$FZF_COMPLETION_AUTO_COMMON_PREFIX_PART" == true ] || [ "$prefix_is_full" == 1 ]; then
+                [ "${items[1]}" ] && printf 'compl_nospace=1\n'>&"${__evaled}" # no space if not only one
+                tr -d "$_FZF_COMPLETION_SEP" <<< "${prefix:0:prefix_len}"
+                return
+            fi
+        fi
+
+        IFS=$'\n'; echo "${items[*]}"
+    fi
+
+    cat
+}
+
 fzf_bash_completer() {
     local value code
     local compl_bashdefault compl_default compl_dirnames compl_filenames compl_noquote compl_nosort compl_nospace compl_plusdirs
@@ -269,7 +305,8 @@ fzf_bash_completer() {
                 while (( $? == 124 )); do
                     _fzf_bash_completion_get_results "$@"
                 done
-            ) | _fzf_bash_completion_unbuffered_awk '$0!="" && !x[$0]++' '$0 = substr($0, 1, len) sep substr($0, len+1)' -vlen="${#__unquoted}" -vsep="$_FZF_COMPLETION_SEP"
+            ) | _fzf_bash_completion_unbuffered_awk '$0!="" && !x[$0]++' '$0 = substr($0, 1, len) sep substr($0, len+1)' -vlen="${#__unquoted}" -vsep="$_FZF_COMPLETION_SEP" \
+              | _fzf_bash_completion_auto_common_prefix "$__unquoted"
         )
         value="$(_fzf_bash_completion_selector "$1" "$__unquoted" "$3" <&"${COPROC[0]}")"
         code="$?"

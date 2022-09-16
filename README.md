@@ -100,6 +100,26 @@ bind -x '"\t": fzf_bash_completion'
 If you are using a `bash` that is dynamically linked against readline (`LD_PRELOAD= ldd $(which bash)`)
 you may prefer (or not!) to use the [readline](#readline) method instead.
 
+#### Autocomplete common prefix
+
+`FZF_COMPLETION_AUTO_COMMON_PREFIX=true`
+
+Enables auto-completion of the common prefix if present (without fzf) - add prefix as whole word.
+
+```
+12 123 -> 12
+121 123 -> 121 123
+```
+
+`FZF_COMPLETION_AUTO_COMMON_PREFIX_PART=true`
+
+Additionally enables native bash complete behavior - add prefix as part of word.
+
+```
+12 123 -> 12
+121 123 -> 12
+```
+
 #### tmux
 
 `$FZF_TMUX_OPTS` is respected same as in [fzf](https://github.com/junegunn/fzf#key-bindings-for-command-line)

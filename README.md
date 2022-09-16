@@ -102,23 +102,30 @@ you may prefer (or not!) to use the [readline](#readline) method instead.
 
 #### Autocomplete common prefix
 
-`FZF_COMPLETION_AUTO_COMMON_PREFIX=true`
+By default, fzf is always shown whenever there are at least 2 matches.
+You can change this to a more "vanilla" tab completion experience where
+it attempts to complete the longest common prefix *before* showing matches in fzf.
 
-Enables auto-completion of the common prefix if present (without fzf) - add prefix as whole word.
+This is controlled by the variables
+* `FZF_COMPLETION_AUTO_COMMON_PREFIX=true` - completes the common prefix if it is also a match
+* `FZF_COMPLETION_AUTO_COMMON_PREFIX_PART=true` - with the above variable, completes the common prefix even if it is not a match
 
+For example, if we have following files in a directory:
 ```
-12 123 -> 12
-121 123 -> 121 123
+abcdef-1234
+abcdef-5678
+abc
+other
 ```
 
-`FZF_COMPLETION_AUTO_COMMON_PREFIX_PART=true`
-
-Additionally enables native bash complete behavior - add prefix as part of word.
-
-```
-12 123 -> 12
-121 123 -> 12
-```
+With `FZF_COMPLETION_AUTO_COMMON_PREFIX=true`:
+* when completing `ls <tab>`, it will display fzf with all 4 files (as normal)
+* when completing `ls a<tab>`, it will automatically complete to `ls abc`. 
+    Pressing tab again will show fzf with the first 3 files.
+* when completing `ls abcd<tab>` it will show fzf with the first 2 files (as normal)
+* With `FZF_COMPLETION_AUTO_COMMON_PREFIX_PART=true` set as well:
+    * when completing `ls abcd<tab>`, it will automatically complete to `ls abcdef-`.
+        Pressing tab again will show fzf with the first 2 files.
 
 #### tmux
 

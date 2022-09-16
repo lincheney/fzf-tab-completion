@@ -59,7 +59,7 @@ _fzf_bash_completion_find_matching_bracket() {
         else
             (( count -- ))
         fi
-    done < <(fgrep $'(\n)' -n)
+    done < <(grep -F -e '(' -e ')' -n)
     return 1
 }
 

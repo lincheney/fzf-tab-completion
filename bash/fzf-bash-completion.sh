@@ -250,6 +250,7 @@ _fzf_bash_completion_get_results() {
 
 _fzf_bash_completion_auto_common_prefix() {
     if [ "$FZF_COMPLETION_AUTO_COMMON_PREFIX" = true ]; then
+        local prefix item items prefix_len prefix_is_full input_len i
         read -r prefix && items=("$prefix") || return
         prefix_len="${#prefix}"
         prefix_is_full=1 # prefix == item
@@ -278,7 +279,7 @@ _fzf_bash_completion_auto_common_prefix() {
             fi
         fi
 
-        IFS=$'\n'; echo "${items[*]}"
+        printf %s\\n "${items[@]}"
     fi
 
     cat

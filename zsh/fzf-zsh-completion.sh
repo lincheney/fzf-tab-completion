@@ -255,7 +255,7 @@ _fzf_completion_compadd() {
         fi
 
         # fullvalue, value, index, display, show, prefix
-        printf %s\\n "${(q)prefix}${(q)__real_str}${(q)__suffix}${_FZF_COMPLETION_SEP}${(q)__hit_str}${_FZF_COMPLETION_SEP}${__comp_index}${_FZF_COMPLETION_SEP}${_FZF_COMPLETION_SEP}${__disp_str}${_FZF_COMPLETION_SEP}${__show_str}" >&"${__stdout}"
+        printf %s\\n "${(q)prefix}${(q)__real_str}${(q)__suffix}${_FZF_COMPLETION_SEP}${(q)__hit_str}${_FZF_COMPLETION_SEP}${__comp_index}${_FZF_COMPLETION_SEP}${__disp_str}${_FZF_COMPLETION_SEP}${__show_str}" >&"${__stdout}"
     done
     return "$code"
 }

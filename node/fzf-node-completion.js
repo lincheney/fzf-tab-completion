@@ -28,12 +28,7 @@ process.stdin.on('keypress', function(str, key) {
             repl.repl.cursor += stdout.length - prefix.length;
             // fzf will have destroyed the prompt, so fix it
             // redraw by backspace, then undo
-            if (stdout === '') {
-                repl.repl.displayPrompt();
-            } else {
-                repl.repl.write(null, {name: 'backspace', sequence: '\x7f'});
-                repl.repl.write(null, {ctrl: true, sequence: '\x1f'});
-            }
+            repl.repl._refreshLine();
         });
     }
 })

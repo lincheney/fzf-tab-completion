@@ -19,15 +19,14 @@ process.stdin.on('keypress', function(str, key) {
                 return;
             }
             let stdout = prefix;
+            const input = completions.filter(x => x !== '').join('\n');
             try {
-                const input = completions.filter(x => x !== '').join('\n');
                 stdout = child_process.execFileSync('rl_custom_complete', [prefix], {input, stdio: ['pipe', 'pipe', 'inherit']}).toString().trim('\n');
             } catch(e) {
             }
             repl.repl.line = repl.repl.line.slice(0, repl.repl.cursor - prefix.length) + stdout + repl.repl.line.slice(repl.repl.cursor);
             repl.repl.cursor += stdout.length - prefix.length;
             // fzf will have destroyed the prompt, so fix it
-            // redraw by backspace, then undo
             repl.repl._refreshLine();
         });
     }

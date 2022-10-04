@@ -23,6 +23,7 @@ rather than [creating a new mechanism](https://github.com/junegunn/fzf/wiki/Exam
     * [zsh](#zsh)
     * [bash](#bash)
     * [readline](#readline)
+    * [nodejs](#nodejs-repl)
 1. The following environment variables are supported, just as in fzf's "vanilla" completion.
     * `$FZF_TMUX_HEIGHT`
     * `$FZF_COMPLETION_OPTS`
@@ -179,6 +180,13 @@ These are the applications that I have seen working:
 * `gdb`
 * `sqlite3`
 * `bash` (only when not statically but dynamically linked to libreadline)
+
+## nodejs repl
+
+1. Copy/symlink `/path/to/fzf-tab-completion/readline/bin/rl_custom_complete` into your `$PATH`
+1. Then run `node -r /path/to/fzf-tab-completion.git/node/fzf-node-completion.js`
+    * You may wish to add a shell alias to your `zshrc`/`bashrc` to avoid typing out the full command each time, e.g.:
+        `alias node='node -r /path/to/fzf-tab-completion.git/node/fzf-node-completion.js`
 
 ## Related projects
 

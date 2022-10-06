@@ -3,6 +3,7 @@
 # use a whitespace char or anchors don't work
 _FZF_COMPLETION_SEP=$'\u00a0'
 _FZF_COMPLETION_PREFIX_SEP=$'\x01'
+_FZF_COMPLETION_NONSPACE=$'\u00ad'
 _FZF_COMPLETION_FLAGS=( a k f q Q e n U l 1 2 C )
 
 zmodload zsh/zselect
@@ -198,6 +199,9 @@ _fzf_completion_compadd() {
     printf "__compadd_args+=( '%s' )\n" "${compadd_args//'/'\''}" >&"${__evaled}"
     (( __comp_index++ ))
 
+     local padding="$(printf %s\\n "${__disp[@]}" | "$_fzf_bash_completion_awk" '{print length}' | sort -nr | head -n1)"
+     padding="$(( padding==0 ? 0 : padding>COLUMNS ? padding : COLUMNS ))"
+
     local file_prefix="${__optskv[-W]:-.}"
     local __disp_str __hit_str __show_str __real_str __suffix
 
@@ -248,6 +252,9 @@ _fzf_completion_compadd() {
             __show_str="$__disp_str"
             __disp_str=
         fi
+
+        # pad out so that e.g. short flags with long display strings are not penalised
+        printf -v __disp_str "%-${padding}s%s" "$__disp_str" "$_FZF_COMPLETION_NONSPACE"
 
         if [[ "$__show_str" == "$PREFIX"* ]]; then
             __show_str="${__show_str:${#PREFIX}}${_FZF_COMPLETION_SEP}"$'\x1b[37m'"${PREFIX}"$'\x1b[0m'

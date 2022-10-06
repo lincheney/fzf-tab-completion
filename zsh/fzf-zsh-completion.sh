@@ -254,7 +254,9 @@ _fzf_completion_compadd() {
         fi
 
         # pad out so that e.g. short flags with long display strings are not penalised
-        printf -v __disp_str "%-${padding}s%s" "$__disp_str" "$_FZF_COMPLETION_NONSPACE"
+        if (( padding )); then
+            printf -v __disp_str "%-$((padding-1))s%s" "$__disp_str" "$_FZF_COMPLETION_NONSPACE"
+        fi
 
         if [[ "$__show_str" == "$PREFIX"* ]]; then
             __show_str="${__show_str:${#PREFIX}}${_FZF_COMPLETION_SPACE_SEP}"$'\x1b[37m'"${PREFIX}"$'\x1b[0m'

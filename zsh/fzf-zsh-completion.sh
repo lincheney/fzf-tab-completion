@@ -51,6 +51,19 @@ fzf_completion() {
         # do not allow grouping, it stuffs up display strings
         zstyle ":completion:*:*" list-grouped no
 
+        local _FZF_COMPLETION_CONTEXT
+        _FZF_COMPLETION_CONTEXT="${compstate[context]//_/-}"
+        _FZF_COMPLETION_CONTEXT="${_FZF_COMPLETION_CONTEXT:+-$_FZF_COMPLETION_CONTEXT-}"
+        if [ "$_FZF_COMPLETION_CONTEXT" = -command- -a "$CURRENT" -gt 1 ]; then
+            _FZF_COMPLETION_CONTEXT="${words[1]}"
+        fi
+        _FZF_COMPLETION_CONTEXT=":completion::complete:${_FZF_COMPLETION_CONTEXT:-*}::${(j-,-)words[@]}"
+
+        local _FZF_COMPLETION_SEARCH_DISPLAY=0
+        if zstyle -t "$_FZF_COMPLETION_SEARCH_DISPLAY" fzf-search-display; then
+            _FZF_COMPLETION_SEARCH_DISPLAY=1
+        fi
+
         set -o monitor +o notify
         exec {__evaled}>&1
         trap '' INT
@@ -140,20 +153,13 @@ _fzf_completion_selector() {
         fi
     done
 
-    local context field=2
-    context="${compstate[context]//_/-}"
-    context="${context:+-$context-}"
-    if [ "$context" = -command- -a "$CURRENT" -gt 1 ]; then
-        context="${words[1]}"
-    fi
-    context=":completion::complete:${context:-*}::${(j-,-)words[@]}"
-
-    if zstyle -t "$context" fzf-search-display; then
+    local field=2
+    if (( _FZF_COMPLETION_SEARCH_DISPLAY )); then
         field=2,3
     fi
 
     local flags=()
-    zstyle -a "$context" fzf-completion-opts flags
+    zstyle -a "$_FZF_COMPLETION_CONTEXT" fzf-completion-opts flags
 
     tput cud1 >/dev/tty # fzf clears the line on exit so move down one
     # fullvalue, value, index, display, show, prefix
@@ -246,15 +252,16 @@ _fzf_completion_compadd() {
         if [[ "$__disp_str" =~ [^[:print:]] ]]; then
             __disp_str="${(q)__disp_str}"
         fi
-        __disp_str=$'\x1b[37m'"$__disp_str"$'\x1b[0m'
         # use display as fallback
         if [[ -z "$__show_str" ]]; then
             __show_str="$__disp_str"
             __disp_str=
+        elif (( ! _FZF_COMPLETION_SEARCH_DISPLAY )); then
+            __disp_str=$'\x1b[37m'"$__disp_str"$'\x1b[0m'
         fi
 
         # pad out so that e.g. short flags with long display strings are not penalised
-        if (( padding )); then
+        if (( padding && ! _FZF_COMPLETION_SEARCH_DISPLAY )); then
             printf -v __disp_str "%-$((padding-1))s%s" "$__disp_str" "$_FZF_COMPLETION_NONSPACE"
         fi
 

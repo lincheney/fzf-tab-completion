@@ -60,7 +60,7 @@ fzf_completion() {
         _FZF_COMPLETION_CONTEXT=":completion::complete:${_FZF_COMPLETION_CONTEXT:-*}::${(j-,-)words[@]}"
 
         local _FZF_COMPLETION_SEARCH_DISPLAY=0
-        if zstyle -t "$_FZF_COMPLETION_SEARCH_DISPLAY" fzf-search-display; then
+        if zstyle -t "$_FZF_COMPLETION_CONTEXT" fzf-search-display; then
             _FZF_COMPLETION_SEARCH_DISPLAY=1
         fi
 

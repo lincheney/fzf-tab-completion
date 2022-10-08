@@ -205,9 +205,6 @@ _fzf_completion_compadd() {
     printf "__compadd_args+=( '%s' )\n" "${compadd_args//'/'\''}" >&"${__evaled}"
     (( __comp_index++ ))
 
-     local padding="$(printf %s\\n "${__disp[@]}" | "$_fzf_bash_completion_awk" '{print length}' | sort -nr | head -n1)"
-     padding="$(( padding==0 ? 0 : padding>COLUMNS ? padding : COLUMNS ))"
-
     local file_prefix="${__optskv[-W]:-.}"
     local __disp_str __hit_str __show_str __real_str __suffix
 
@@ -258,11 +255,6 @@ _fzf_completion_compadd() {
             __disp_str=
         elif (( ! _FZF_COMPLETION_SEARCH_DISPLAY )); then
             __disp_str=$'\x1b[37m'"$__disp_str"$'\x1b[0m'
-        fi
-
-        # pad out so that e.g. short flags with long display strings are not penalised
-        if (( padding && ! _FZF_COMPLETION_SEARCH_DISPLAY )); then
-            printf -v __disp_str "%-$((padding-1))s%s" "$__disp_str" "$_FZF_COMPLETION_NONSPACE"
         fi
 
         if [[ "$__show_str" == "$PREFIX"* ]]; then

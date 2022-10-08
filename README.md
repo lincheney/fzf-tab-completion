@@ -45,6 +45,12 @@ If you have also enabled fzf's zsh completion, then the `bindkey` line is option
 Note that this does not provide `**`-style triggers,
 you will need to enable fzf's zsh completion _as well_.
 
+#### --tiebreak=chunk
+
+The default `fzf` tiebreak setting is line: `Prefers line with shorter length`.
+The length of the zsh display strings may skew the ordering of the results even though they are not part of the match.
+You may find that adding the `fzf` flag `--tiebreak=chunk` to the environment variable `$FZF_COMPLETION_OPTS` provides better behaviour.
+
 #### tmux
 
 `$FZF_TMUX_OPTS` is respected same as in [fzf](https://github.com/junegunn/fzf#key-bindings-for-command-line)

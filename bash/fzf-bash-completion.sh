@@ -96,7 +96,7 @@ _fzf_bash_completion_parse_dq() {
             fi
             # subshell closed
             joined="$(<<<"$split" head -n "$num" | tr -d \\n)"
-            word+=$'\n'"\$($joined"$'\n'
+            word+=$'\n$('"$joined"$'\n'
             shell="${shell:${#joined}}"
         done
     fi
@@ -122,7 +122,13 @@ EOF
 }
 
 _fzf_bash_completion_compspec() {
-    complete -p -- "$1" || complete -p '' || printf '%s\n' 'complete -o filenames -F _fzf_bash_completion_fallback_completer'
+    if [[ "$COMP_CWORD" == 0 && -z "$2" ]]; then
+        complete -p -E || printf '%s\n' 'complete -F _fzf_bash_completion_complete_commands'
+    elif [[ "$COMP_CWORD" == 0 ]]; then
+        complete -p -I || printf '%s\n' 'complete -F _fzf_bash_completion_complete_commands'
+    else
+        complete -p -- "$1" || complete -p -D || printf '%s\n' 'complete -o filenames -F _fzf_bash_completion_fallback_completer'
+    fi
 }
 
 _fzf_bash_completion_fallback_completer() {
@@ -134,6 +140,12 @@ _fzf_bash_completion_fallback_completer() {
         # complete files
         readarray -t COMPREPLY < <(compgen -f -- "$1")
     fi
+}
+
+_fzf_bash_completion_complete_commands() {
+    # commands
+    compopt -o filenames
+    readarray -t COMPREPLY < <(compgen -abc -- "$2")
 }
 
 _fzf_bash_completion_loading_msg() {
@@ -213,10 +225,6 @@ _fzf_bash_completion_get_results() {
             local prefix="$2"
         fi
         compgen -v -P "$prefix" -S "${brace:+\}}" -- "$filter"
-    elif [ "$COMP_CWORD" == 0 ]; then
-        # commands
-        printf '%s\n' compl_filenames=1 >&"${__evaled}"
-        compgen -abc -- "$2" | _fzf_bash_completion_dir_marker
     elif [[ "$2" == *"$trigger" ]]; then
         # replicate fzf ** trigger completion
         local suffix="${2##*/}"

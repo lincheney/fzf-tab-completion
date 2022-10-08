@@ -202,7 +202,7 @@ _fzf_completion_compadd() {
         IPREFIX=
     fi
     local compadd_args="$(printf '%q ' PREFIX="$PREFIX" IPREFIX="$IPREFIX" SUFFIX="$SUFFIX" ISUFFIX="$ISUFFIX" compadd ${__flags:+-$__flags} "${__opts[@]}" "${__ipre[@]}" "${__apre[@]}" "${__hpre[@]}" "${__hsuf[@]}" "${__asuf[@]}" "${__isuf[@]}" -U)"
-    printf "__compadd_args+=( '%s' )\n" "${compadd_args//'/'\''}" >&"${__evaled}"
+    printf "__compadd_args+=( '%s' )\n" "${compadd_args//'/'\\''}" >&"${__evaled}"
     (( __comp_index++ ))
 
     local file_prefix="${__optskv[-W]:-.}"

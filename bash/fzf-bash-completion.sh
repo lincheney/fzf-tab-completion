@@ -9,7 +9,7 @@ _fzf_bash_completion_awk_escape() {
 }
 
 _fzf_bash_completion_shell_split() {
-   grep -E -o \
+    grep -E -o \
         -e '[;(){}&\|:]' \
         -e '\|+|&+' \
         -e "(\\\\.|[^\"'[:space:];:(){}&\\|])+" \
@@ -122,9 +122,9 @@ EOF
 
 _fzf_bash_completion_compspec() {
     if [[ "$COMP_CWORD" == 0 && -z "$2" ]]; then
-        complete -p -E || printf '%s\n' 'complete -F _fzf_bash_completion_complete_commands'
+        complete -p -E || printf '%s\n' 'complete -F _fzf_bash_completion_complete_commands -E'
     elif [[ "$COMP_CWORD" == 0 ]]; then
-        complete -p -I || printf '%s\n' 'complete -F _fzf_bash_completion_complete_commands'
+        complete -p -I || printf '%s\n' 'complete -F _fzf_bash_completion_complete_commands -I'
     else
         complete -p -- "$1" || complete -p -D || printf '%s\n' 'complete -o filenames -F _fzf_bash_completion_fallback_completer'
     fi

@@ -51,13 +51,14 @@ fzf_completion() {
         # do not allow grouping, it stuffs up display strings
         zstyle ":completion:*:*" list-grouped no
 
+        local curcontext="${curcontext:-}"
         local _FZF_COMPLETION_CONTEXT
         _FZF_COMPLETION_CONTEXT="${compstate[context]//_/-}"
         _FZF_COMPLETION_CONTEXT="${_FZF_COMPLETION_CONTEXT:+-$_FZF_COMPLETION_CONTEXT-}"
         if [ "$_FZF_COMPLETION_CONTEXT" = -command- -a "$CURRENT" -gt 1 ]; then
             _FZF_COMPLETION_CONTEXT="${words[1]}"
         fi
-        _FZF_COMPLETION_CONTEXT=":completion::complete:${_FZF_COMPLETION_CONTEXT:-*}::${(j-,-)words[@]}"
+        _FZF_COMPLETION_CONTEXT=":completion:${curcontext}:complete:${_FZF_COMPLETION_CONTEXT:-*}::${(j-,-)words[@]}"
 
         local _FZF_COMPLETION_SEARCH_DISPLAY=0
         if zstyle -t "$_FZF_COMPLETION_CONTEXT" fzf-search-display; then

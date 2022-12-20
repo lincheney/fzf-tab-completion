@@ -46,6 +46,7 @@ fzf_completion() {
         fi
 
         # all except autoload functions
+        local full_variables="$(typeset -p)"
         local full_functions="$(functions + | grep -F -vx "$(functions -u +)")"
 
         # do not allow grouping, it stuffs up display strings
@@ -74,8 +75,9 @@ fzf_completion() {
                 exec {__stdout}>&1
                 stderr="$(
                     _fzf_completion_preexit() {
-                        echo set -A _comps "${(qkv)_comps[@]}" >&"${__evaled}"
+                        trap -
                         functions + | grep -F -vx -e "$(functions -u +)" -e "$full_functions" | while read -r f; do which -- "$f"; done >&"${__evaled}"
+                        { typeset -p -- $(typeset + | grep -vF 'local ' | "$_fzf_bash_completion_awk" '{print $NF}') | grep -xvFf <(printf %s "$full_variables") >&"${__evaled}" } 2>/dev/null
                     }
                     trap _fzf_completion_preexit EXIT TERM
                     _main_complete 2>&1

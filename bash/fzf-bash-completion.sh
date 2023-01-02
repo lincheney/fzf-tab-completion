@@ -325,24 +325,7 @@ fzf_bash_completer() {
     )"
 
     if [ "$code" = 0 ]; then
-        readarray -t COMPREPLY < <(
-            if [ "$compl_noquote" != 1 -a "$compl_filenames" = 1 ]; then
-                while IFS= read -r line; do
-                    if [ "$line" = "$2" ]; then
-                        printf '%s\n' "$line"
-                    # never quote the prefix
-                    elif [ "${line::${#2}}" = "$2" ]; then
-                        printf '%s%q\n' "$2" "${line:${#2}}"
-                    elif [ "${line::1}" = '~' ]; then
-                        printf '~%q\n' "${line:1}"
-                    else
-                        printf '%q\n' "$line"
-                    fi
-                done
-            else
-                cat
-            fi <<<"$COMPREPLY"
-        )
+        readarray -t COMPREPLY < <(_fzf_bash_completion_quote_filenames "$@" <<<"$COMPREPLY")
         COMPREPLY="${COMPREPLY[*]}"
         [ "$compl_nospace" != 1 ] && COMPREPLY="$COMPREPLY "
         [[ "$compl_filenames" == *1* ]] && COMPREPLY="${COMPREPLY/%\/ //}"
@@ -405,8 +388,7 @@ _fzf_bash_completion_complete() {
         fi
     fi
 
-    compl_filenames="${compl_filenames}${compl_plusdirs}${compl_dirnames}"
-    if [[ "$compl_filenames" == *1* ]]; then
+    if [[ "$compl_filenames" == 1 ]]; then
         local dir_marker=_fzf_bash_completion_dir_marker
     else
         local dir_marker=cat
@@ -448,17 +430,22 @@ _fzf_bash_completion_complete() {
           | if IFS= read -r line; then
                 printf '%s\n' "$line"; cat
             else
+                # got no results
                 local compgen_opts=()
                 [ "$compl_bashdefault" = 1 ] && compgen_opts+=( -o bashdefault )
                 [ "$compl_default" = 1 ] && compgen_opts+=( -o default )
                 [ "$compl_dirnames" = 1 ] && compgen_opts+=( -o dirnames )
                 if [ -n "${compgen_opts[*]}" ]; then
-                    compgen "${compgen_opts[@]}" -- "$2"
+                    compgen "${compgen_opts[@]}" -- "$2" \
+                    | _fzf_bash_completion_dir_marker \
+                    | compl_filenames=1 _fzf_bash_completion_quote_filenames "$@"
                 fi
             fi
 
         if [ "$compl_plusdirs" = 1 ]; then
-            compgen -o dirnames -- "$2"
+            compgen -o dirnames -- "$2" \
+            | _fzf_bash_completion_dir_marker \
+            | compl_filenames=1 _fzf_bash_completion_quote_filenames "$@"
         fi
     ) \
     | _fzf_bash_completion_unbuffered_awk '' 'sub(find, replace)' -vfind="^$(_fzf_bash_completion_awk_escape "$2")" -vreplace="$("$_fzf_bash_completion_sed" -r 's/\\(.)/\1/g; s/[&\]/\\&/g' <<<"$2")" \
@@ -491,9 +478,29 @@ _fzf_bash_completion_dir_marker() {
         if [[ "$line" == \~* ]]; then
             eval "$(printf expanded=~%q "${line:1}")"
         fi
-        [ -d "${expanded-"$line"}" ] && line="$line/"
+        [ -d "${expanded-"$line"}" ] && line="${line%/}/"
         printf '%s\n' "$line"
     done
+}
+
+_fzf_bash_completion_quote_filenames() {
+    if [ "$compl_noquote" != 1 -a "$compl_filenames" = 1 ]; then
+        local IFS line
+        while IFS= read -r line; do
+            if [ "$line" = "$2" ]; then
+                printf '%s\n' "$line"
+            # never quote the prefix
+            elif [ "${line::${#2}}" = "$2" ]; then
+                printf '%s%q\n' "$2" "${line:${#2}}"
+            elif [ "${line::1}" = '~' ]; then
+                printf '~%q\n' "${line:1}"
+            else
+                printf '%q\n' "$line"
+            fi
+        done
+    else
+        cat
+    fi
 }
 
 _fzf_bash_completion_compopt() {

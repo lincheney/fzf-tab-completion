@@ -5,6 +5,7 @@ extern crate libc;
 use std::io::{Write, BufReader, BufRead};
 use std::process::{Command, Stdio};
 use std::ffi::CStr;
+use std::os::raw::c_char;
 
 type DynlibResult<T> = Result<T, &'static str>;
 
@@ -62,7 +63,7 @@ impl Iterator for CArray {
     }
 }
 
-fn make_cstr(ptr: *const i8) -> &'static [u8] {
+fn make_cstr(ptr: *const c_char) -> &'static [u8] {
     unsafe{ CStr::from_ptr(ptr) }.to_bytes()
 }
 
@@ -227,8 +228,8 @@ extern fn custom_complete(text: *const i8, start: isize, end: isize) -> *const *
     }
 }
 
-fn _custom_complete(text: *const i8, matches: *const *const i8) -> ::DynlibResult<Option<Vec<String>>> {
-    let text = unsafe{ CStr::from_ptr(text as *const i8) }.to_bytes();
+fn _custom_complete(text: *const c_char, matches: *const *const i8) -> ::DynlibResult<Option<Vec<String>>> {
+    let text = unsafe{ CStr::from_ptr(text) }.to_bytes();
     let text = std::str::from_utf8(text).unwrap();
 
     let mut command = Command::new("rl_custom_complete");

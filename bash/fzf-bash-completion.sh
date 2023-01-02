@@ -325,7 +325,6 @@ fzf_bash_completer() {
     )"
 
     if [ "$code" = 0 ]; then
-        readarray -t COMPREPLY < <(_fzf_bash_completion_quote_filenames "$@" <<<"$COMPREPLY")
         COMPREPLY="${COMPREPLY[*]}"
         [ "$compl_nospace" != 1 ] && COMPREPLY="$COMPREPLY "
         [[ "$compl_filenames" == *1* ]] && COMPREPLY="${COMPREPLY/%\/ //}"
@@ -428,7 +427,7 @@ _fzf_bash_completion_complete() {
         ) | _fzf_bash_completion_apply_xfilter "$compl_xfilter" \
           | _fzf_bash_completion_unbuffered_awk '$0!=""' 'sub(find, replace)' -vfind='.*' -vreplace="$(printf %s "$compl_prefix" | "$_fzf_bash_completion_sed" 's/[&\]/\\&/g')&$(printf %s "$compl_suffix" | "$_fzf_bash_completion_sed" 's/[&\]/\\&/g')" \
           | if IFS= read -r line; then
-                printf '%s\n' "$line"; cat
+                (printf '%s\n' "$line"; cat) | _fzf_bash_completion_quote_filenames "$@"
             else
                 # got no results
                 local compgen_opts=()

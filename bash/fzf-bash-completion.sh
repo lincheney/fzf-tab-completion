@@ -317,9 +317,9 @@ fzf_bash_completer() {
               | _fzf_bash_completion_auto_common_prefix "$__unquoted"
         )
         value="$(_fzf_bash_completion_selector "$1" "$__unquoted" "$3" <&"${COPROC[0]}")"
+        code="$?"
         value="$(<<<"$value" tr \\n \ )"
         value="${value% }"
-        code="$?"
 
         printf 'COMPREPLY=%q\n' "$value"
         printf 'code=%q\n' "$code"

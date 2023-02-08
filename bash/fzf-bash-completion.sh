@@ -48,7 +48,7 @@ _fzf_bash_completion_flatten_subshells() {
 
 _fzf_bash_completion_find_matching_bracket() {
     local count=0
-    while IFS=: read num bracket; do
+    while IFS=: read -r num bracket; do
         if [ "$bracket" = "$1" ]; then
             (( count++ ))
             if (( count > 0 )); then
@@ -67,36 +67,47 @@ _fzf_bash_completion_parse_dq() {
     local last="$(<<<"$words" tail -n1)"
 
     if [[ "$last" == \"* ]]; then
-        local shell="${last:1}" _shell joined
+        local line="${last:1}" shell_start string_end joined num
         local word=
         while true; do
             # we are in a double quoted string
-            _shell="$(<<<"$shell" "$_fzf_bash_completion_sed" -r 's/^(\\.|[^"$])*\$\(//')"
 
-            if [ "$shell" = "$_shell" ]; then
-                # no subshells
+            shell_start="$(<<<"$line" command grep -E -o '^(\\.|\$[^(]|[^$])*\$\(')"
+            string_end="$(<<<"$line" command grep -E -o '^(\\.|[^"])*"')"
+
+            if (( ${#string_end} && ( ! ${#shell_start} || ${#string_end} < ${#shell_start} )  )); then
+                # found end of string
+                line="${line:${#string_end}}"
+                printf '%s\n' "${words:0:-${#line}}"
+                _fzf_bash_completion_parse_line <<<"$line"
+                return
+
+            elif (( ${#shell_start} && ( ! ${#string_end} || ${#shell_start} < ${#string_end} )  )); then
+                # found a subshell
+
+                word+="${shell_start:0:-2}"
+                line="${line:${#shell_start}}"
+
+                split="$(<<<"$line" _fzf_bash_completion_shell_split)"
+                if ! split="$(_fzf_bash_completion_parse_dq <<<"$split")"; then
+                    # bubble up
+                    printf '%s\n' "$split"
+                    return 1
+                fi
+                if ! num="$(_fzf_bash_completion_find_matching_bracket ')' <<<"$split")"; then
+                    # subshell not closed, this is it
+                    printf '%s\n' "$split"
+                    return 1
+                fi
+                # subshell closed
+                joined="$(<<<"$split" head -n "$num" | tr -d \\n)"
+                word+=$'\n$('"$joined"$'\n'
+                line="${line:${#joined}}"
+
+            else
+                # the whole line is an incomplete string
                 break
             fi
-
-            word+="${shell:0:-${#_shell}-2}"
-            shell="$_shell"
-
-            # found a subshell
-            split="$(<<<"$shell" _fzf_bash_completion_shell_split)"
-            if ! split="$(_fzf_bash_completion_parse_dq <<<"$split")"; then
-                # bubble up
-                printf '%s\n' "$split"
-                return 1
-            fi
-            if ! num="$(_fzf_bash_completion_find_matching_bracket ')' <<<"$split")"; then
-                # subshell not closed, this is it
-                printf '%s\n' "$split"
-                return 1
-            fi
-            # subshell closed
-            joined="$(<<<"$split" head -n "$num" | tr -d \\n)"
-            word+=$'\n$('"$joined"$'\n'
-            shell="${shell:${#joined}}"
         done
     fi
     printf '%s\n' "$words"
@@ -425,7 +436,7 @@ _fzf_bash_completion_complete() {
                 )
             fi
 
-            printf '%s\n'
+            printf '\n'
         ) | _fzf_bash_completion_apply_xfilter "$compl_xfilter" \
           | _fzf_bash_completion_unbuffered_awk '$0!=""' 'sub(find, replace)' -vfind='.*' -vreplace="$(printf %s "$compl_prefix" | "$_fzf_bash_completion_sed" 's/[&\]/\\&/g')&$(printf %s "$compl_suffix" | "$_fzf_bash_completion_sed" 's/[&\]/\\&/g')" \
           | if IFS= read -r line; then

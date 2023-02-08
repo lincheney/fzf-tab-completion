@@ -9,7 +9,7 @@ _fzf_bash_completion_awk_escape() {
 }
 
 _fzf_bash_completion_shell_split() {
-    grep -E -o \
+    command grep -E -o \
         -e '[;(){}&\|:]' \
         -e '\|+|&+' \
         -e "(\\\\.|[^\"'[:space:];:(){}&\\|])+" \
@@ -58,7 +58,7 @@ _fzf_bash_completion_find_matching_bracket() {
         else
             (( count -- ))
         fi
-    done < <(grep -F -e '(' -e ')' -n)
+    done < <(command grep -F -e '(' -e ')' -n)
     return 1
 }
 

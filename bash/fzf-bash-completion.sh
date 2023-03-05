@@ -169,6 +169,7 @@ fzf_bash_completion() {
     command tput rc 2>/dev/null || echo -ne "\0338"
 
     local COMP_WORDS COMP_CWORD COMP_POINT COMP_LINE
+    local COMP_TYPE=37 # % == indicates menu completion
     local line="${READLINE_LINE:0:READLINE_POINT}"
     readarray -t COMP_WORDS < <(_fzf_bash_completion_parse_line <<<"$line")
 

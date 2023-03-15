@@ -414,7 +414,7 @@ _fzf_bash_completion_complete() {
     (
         (
             if [ -n "${compgen_actions[*]}" ]; then
-                compgen "${compgen_opts[@]}" -- "$2"
+                compgen "${compgen_actions[@]}" -- "$2"
             fi
 
             if [ -n "$compl_globpat" ]; then

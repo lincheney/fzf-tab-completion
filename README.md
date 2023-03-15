@@ -104,6 +104,9 @@ source /path/to/fzf-tab-completion/bash/fzf-bash-completion.sh
 bind -x '"\t": fzf_bash_completion'
 ```
 
+Note that this does not provide `**`-style triggers,
+you will need to enable fzf's bash completion _as well_.
+
 If you are using a `bash` that is dynamically linked against readline (`LD_PRELOAD= ldd $(which bash)`)
 you may prefer (or not!) to use the [readline](#readline) method instead.
 

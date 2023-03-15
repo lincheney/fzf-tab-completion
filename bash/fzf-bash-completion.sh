@@ -225,7 +225,6 @@ _fzf_bash_completion_expand_alias() {
 }
 
 _fzf_bash_completion_get_results() {
-    local trigger="${FZF_COMPLETION_TRIGGER-**}"
     if [[ "$2" =~ .*\$(\{?)([A-Za-z0-9_]*)$ ]]; then
         # environment variables
         local brace="${BASH_REMATCH[1]}"
@@ -236,32 +235,6 @@ _fzf_bash_completion_get_results() {
             local prefix="$2"
         fi
         compgen -v -P "$prefix" -S "${brace:+\}}" -- "$filter"
-    elif [[ "$2" == *"$trigger" ]]; then
-        # replicate fzf ** trigger completion
-        local suffix="${2##*/}"
-        local prefix="${2::${#2}-${#suffix}}"
-        suffix="${suffix::${#suffix}-${#trigger}}"
-
-        local flags=()
-        if [[ "$1" =~ cd|pushd|rmdir ]]; then
-            flags=( -type d )
-        fi
-
-        if [[ ! "$prefix" =~ (.?/).* ]]; then
-            prefix="./$prefix"
-        elif [ "${prefix::2}" = '~/' ]; then
-            prefix="${HOME}/${prefix:2}"
-        fi
-
-        # smart case
-        if [ "${suffix,,}" = "${suffix}" ]; then
-            flags+=( -ipath "$prefix$suffix*" )
-        else
-            flags+=( -path "$prefix$suffix*" )
-        fi
-
-        printf '%s\n' compl_filenames=1 >&"${__evaled}"
-        find -L "$prefix" -mindepth 1 "${flags[@]}" \( -type d -printf "%p/\n" , -type f -print \) 2>/dev/null | "$_fzf_bash_completion_sed" 's,^\./,,'
     else
         _fzf_bash_completion_complete "$@"
     fi
@@ -448,10 +421,13 @@ _fzf_bash_completion_complete() {
                 [ "$compl_bashdefault" = 1 ] && compgen_opts+=( -o bashdefault )
                 [ "$compl_default" = 1 ] && compgen_opts+=( -o default )
                 [ "$compl_dirnames" = 1 ] && compgen_opts+=( -o dirnames )
+                # don't double invoke fzf
                 if [ -n "${compgen_opts[*]}" ]; then
-                    compgen "${compgen_opts[@]}" -- "$2" \
-                    | _fzf_bash_completion_dir_marker \
-                    | compl_filenames=1 _fzf_bash_completion_quote_filenames "$@"
+                    if [[ "$compl_function" != _fzf_*_completion ]] || ! command -v "$compl_function"; then
+                        compgen "${compgen_opts[@]}" -- "$2" \
+                        | _fzf_bash_completion_dir_marker \
+                        | compl_filenames=1 _fzf_bash_completion_quote_filenames "$@"
+                    fi
                 fi
             fi
 

@@ -110,16 +110,6 @@ you will need to enable fzf's bash completion _as well_.
 If you are using a `bash` that is dynamically linked against readline (`LD_PRELOAD= ldd $(which bash)`)
 you may prefer (or not!) to use the [readline](#readline) method instead.
 
-#### Preserve input line
-
-`bash` will clear the input line and prompt before performing completion.
-There is an experimental workaround to prevent this from happening.
-
-Instead adding the `bind -x ...` command from above to your `~/.bashrc`, instead use `enable_fzf_bash_completion`.
-
-This will bind fzf completion to the tab key by default
-To use another key e.g. control-p do `enable_fzf_bash_completion '\C-p'`.
-
 #### Autocomplete common prefix
 
 By default, fzf is always shown whenever there are at least 2 matches.

@@ -1,11 +1,5 @@
 _FZF_COMPLETION_SEP=$'\x01'
 
-_fzf_bash_completion_get_cursor() {
-    # ask for cursor report, in format of \x1b[${ROL};${COL}R
-    tput u7 2>/dev/null || printf '\x1b[6n'
-    IFS='[;' read -r -s -dR -a "$1"
-}
-
 # shell parsing stuff
 _fzf_bash_completion_awk="$( { which gawk || echo awk; } 2>/dev/null)"
 _fzf_bash_completion_sed="$( { which gsed || echo sed; } 2>/dev/null)"
@@ -170,9 +164,9 @@ _fzf_bash_completion_loading_msg() {
 
 fzf_bash_completion() {
     printf '\r'
-    command tput sc 2>/dev/null || printf '\x1b7'
+    command tput sc 2>/dev/null || echo -ne "\0337"
     printf '%s' "$(_fzf_bash_completion_loading_msg)"
-    command tput rc 2>/dev/null || printf '\x1b8'
+    command tput rc 2>/dev/null || echo -ne "\0338"
 
     local COMP_WORDS COMP_CWORD COMP_POINT COMP_LINE
     local COMP_TYPE=37 # % == indicates menu completion
@@ -211,13 +205,12 @@ fzf_bash_completion() {
     fi
 
     printf '\r'
-    command tput el 2>/dev/null || printf '\x1b[K'
+    command tput el 2>/dev/null || echo -ne "\033[K"
 }
 
 _fzf_bash_completion_selector() {
-    local _fzf_bash_completion_prompt_var="${_fzf_bash_completion_prompt_var:-COMP_LINE}"
     FZF_DEFAULT_OPTS="--height ${FZF_TMUX_HEIGHT:-40%} --reverse $FZF_DEFAULT_OPTS $FZF_COMPLETION_OPTS" \
-        $(__fzfcmd 2>/dev/null || echo fzf) -1 -0 --prompt "> ${!_fzf_bash_completion_prompt_var}" --nth 2 -d "$_FZF_COMPLETION_SEP" --ansi \
+        $(__fzfcmd 2>/dev/null || echo fzf) -1 -0 --prompt "> $line" --nth 2 -d "$_FZF_COMPLETION_SEP" --ansi \
     | tr -d "$_FZF_COMPLETION_SEP"
 }
 
@@ -515,52 +508,4 @@ _fzf_bash_completion_compopt() {
         fi
         shift 2
     done
-}
-
-enable_fzf_bash_completion() {
-    local key="${1:-\t}"
-    shift 2>/dev/null
-    # massive hack
-    bind "$@" "\"$key\""$': "\u100001\u100002"'
-    # these two need to run separately
-    # so that readline restores the command line in the middle
-    bind "$@" -x $'"\u100001": _fzf_bash_completion_pre'
-    bind "$@" -x $'"\u100002": _fzf_bash_completion_wrapped'
-}
-
-_fzf_bash_completion_pre() {
-    # drop a marker at end and save cursor position there
-    _fzf_bash_completion_marker="$RANDOM$RANDOM$RANDOM$RANDOM"
-    READLINE_LINE+="$_fzf_bash_completion_marker"
-    local sc="$(tput sc 2>/dev/null || printf '\x1b7')"
-    exec {_fzf_bash_completion_tty}>&2
-    # hijack readline output
-    # remove the clr_eol keyseq so that the command line is preserved when we get to _fzf_bash_completion_wrapped
-    exec 2> >(command sed -u -e 's/\x1b\[K//g' -e "s/$_fzf_bash_completion_marker/$sc/" >&"$_fzf_bash_completion_tty")
-    _fzf_bash_completion_pre_pid="$!"
-}
-
-_fzf_bash_completion_wrapped() {
-    # remove the marker
-    READLINE_LINE="${READLINE_LINE::-${#_fzf_bash_completion_marker}}"
-    # restore tty
-    exec 2>&"$_fzf_bash_completion_tty"
-    # wait for sed to finish
-    wait "$_fzf_bash_completion_pre_pid" 2>/dev/null
-    unset _fzf_bash_completion_{tty,marker,pre_pid}
-
-    local cursor_start cursor_end
-    # get cursor at start of prompt
-    # then restore cursor to end of line
-    # so we can calculate how many rows the command line takes up
-    _fzf_bash_completion_get_cursor cursor_start
-    command tput rc 2>/dev/null || printf '\x1b8'
-    printf '\r\n'
-    _fzf_bash_completion_get_cursor cursor_end
-
-    _fzf_bash_completion_prompt_var=cur fzf_bash_completion
-
-    # go back to start of prompt
-    local rows="$(( cursor_end[1] - cursor_start[1] ))"
-    command tput cuu "$rows" 2>/dev/null || printf '\x1b[%iA' "$rows"
 }

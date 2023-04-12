@@ -119,12 +119,19 @@ _fzf_bash_completion_parse_line() {
         | _fzf_bash_completion_flatten_subshells \
         | tr \\n \\0 \
         | "$_fzf_bash_completion_sed" -r "$(cat <<'EOF'
-s/\x00\s*\x00/\n/g;
+# collapse newlines
+s/\x00\s*\x00/\x00/g;
+# leave trailing space
 s/\x00(\s*)$/\n\1/;
+# A & B -> (A, &, B)
 s/([^&\n\x00])&([^&\n\x00])/\1\n\&\n\2/g;
+# > B -> (>, B)
 s/([\n\x00\z])([<>]+)([^\n\x00])/\1\2\n\3/g;
 s/([<>][\n\x00])$/\1\n/;
-s/^(.*[\x00\n])?(\[\[|case|do|done|elif|else|esac|fi|for|function|if|in|select|then|time|until|while|&|;|&&|\|[|&]?)[\x00\n]//;
+# clear up until the a keyword starting a new command
+# except the last line isn't a keyword, it may be the start of a command
+s/^(.*[\x00\n])?(\[\[|case|do|done|elif|else|esac|fi|for|function|if|in|select|then|time|until|while|&|;|&&|\|[|&]?)\x00//;
+# remove ENVVAR=VALUE
 s/^(\s*[\n\x00]|\w+=[^\n\x00]*[\n\x00])*//
 EOF
 )" \

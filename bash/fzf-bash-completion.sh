@@ -78,8 +78,12 @@ _fzf_bash_completion_parse_dq() {
             if (( ${#string_end} && ( ! ${#shell_start} || ${#string_end} < ${#shell_start} )  )); then
                 # found end of string
                 line="${line:${#string_end}}"
-                printf '%s\n' "${words:0:-${#line}}"
-                _fzf_bash_completion_parse_line <<<"$line"
+                if (( ${#line} )); then
+                    printf '%s\n' "${words:0:-${#line}}"
+                    _fzf_bash_completion_parse_line <<<"$line"
+                else
+                    printf '%s\n' "$words"
+                fi
                 return
 
             elif (( ${#shell_start} && ( ! ${#string_end} || ${#shell_start} < ${#string_end} )  )); then

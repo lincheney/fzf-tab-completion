@@ -312,6 +312,7 @@ fzf_bash_completer() {
             ) | _fzf_bash_completion_unbuffered_awk '$0!="" && !x[$0]++' '$0 = "\x1b[37m" substr($0, 1, len) "\x1b[0m" sep substr($0, len+1)' -vlen="${#__unquoted}" -vsep="$_FZF_COMPLETION_SEP" \
               | _fzf_bash_completion_auto_common_prefix "$__unquoted"
         )
+        local coproc_pid="$COPROC_PID"
         value="$(_fzf_bash_completion_selector "$1" "$__unquoted" "$3" <&"${COPROC[0]}")"
         code="$?"
         value="$(<<<"$value" tr \\n \ )"
@@ -319,7 +320,15 @@ fzf_bash_completer() {
 
         printf 'COMPREPLY=%q\n' "$value"
         printf 'code=%q\n' "$code"
-        kill 0
+
+        # kill descendant processes of coproc
+        descend_process () {
+            printf '%s\n' "$1"
+            for pid in $(ps -o pid= --ppid "$1"); do
+                descend_process "$pid"
+            done
+        }
+        kill -- $(descend_process "$coproc_pid") 2>/dev/null
     )"
 
     if [ "$code" = 0 ]; then

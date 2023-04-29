@@ -142,6 +142,8 @@ _fzf_completion_gen_matches() {
                     printf "__stderr='%s'\\n" "${line//'/'\''}" >&"${__evaled}"
                 done) 2>&1
             } always {
+                # hides the 'killed by ...' msg
+                zle -R ' ' ' '
                 # close fd so the fzf subshell knows there are no more matches
                 exec {_fzf_compadd}<&-
                 # restore old show-completer zstyle

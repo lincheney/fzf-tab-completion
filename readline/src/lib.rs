@@ -1,10 +1,10 @@
-#[macro_use]
-extern crate lazy_static;
+extern crate once_cell;
 extern crate libc;
 
 use std::io::{Write, BufReader, BufRead};
 use std::process::{Command, Stdio};
 use std::ffi::CStr;
+use std::os::raw::c_char;
 
 type DynlibResult<T> = Result<T, &'static str>;
 
@@ -62,7 +62,7 @@ impl Iterator for CArray {
     }
 }
 
-fn make_cstr(ptr: *const i8) -> &'static [u8] {
+fn make_cstr(ptr: *const c_char) -> &'static [u8] {
     unsafe{ CStr::from_ptr(ptr) }.to_bytes()
 }
 
@@ -172,6 +172,7 @@ mod readline {
 
     #[allow(non_upper_case_globals, non_camel_case_types)]
     mod lib {
+        use once_cell::sync::Lazy;
         use std::marker::PhantomData;
         pub type rl_completion_func_t = extern fn(*const i8, isize, isize) -> *const *const i8;
         pub type rl_compentry_func_t = unsafe extern fn(*const i8, isize) -> *mut i8;
@@ -182,18 +183,25 @@ mod readline {
             pub fn ptr(&self) -> *mut T { self.0 as *mut T }
         }
 
+        struct Lib(*mut libc::c_void);
+        unsafe impl Sync for Lib {}
+        unsafe impl Send for Lib {}
+
+        // rl_custom_function should really have done this for us
+        static libreadline: Lazy<::DynlibResult<Lib>> = Lazy::new(|| unsafe {
+            dynlib_call!(dlopen(b"libreadline.so\0".as_ptr() as _, libc::RTLD_GLOBAL | libc::RTLD_LAZY)).map(|lib| Lib(lib))
+        });
+
         macro_rules! readline_lookup {
             ($name:ident: $type:ty) => {
                 readline_lookup!($name: $type; libc::RTLD_DEFAULT);
             };
             ($name:ident: $type:ty; $handle:expr) => {
-                lazy_static! {
-                    pub static ref $name: ::DynlibResult<$type> = unsafe {
-                        dlsym!($handle, stringify!($name)).or_else(|_|
-                            dynlib_call!(dlopen(b"libreadline.so\0".as_ptr() as _, libc::RTLD_NOLOAD | libc::RTLD_LAZY))
-                            .and_then(|lib| dlsym!(lib, stringify!($name)))
-                        )};
-                }
+                pub static $name: Lazy<::DynlibResult<$type>> = Lazy::new(|| unsafe {
+                    dlsym!($handle, stringify!($name)).or_else(|_|
+                        (*libreadline).as_ref().map_err(|s| s.clone()).and_then(|lib| dlsym!(lib.0, stringify!($name)))
+                    )
+                });
             }
         }
 
@@ -227,8 +235,8 @@ extern fn custom_complete(text: *const i8, start: isize, end: isize) -> *const *
     }
 }
 
-fn _custom_complete(text: *const i8, matches: *const *const i8) -> ::DynlibResult<Option<Vec<String>>> {
-    let text = unsafe{ CStr::from_ptr(text as *const i8) }.to_bytes();
+fn _custom_complete(text: *const c_char, matches: *const *const i8) -> ::DynlibResult<Option<Vec<String>>> {
+    let text = unsafe{ CStr::from_ptr(text) }.to_bytes();
     let text = std::str::from_utf8(text).unwrap();
 
     let mut command = Command::new("rl_custom_complete");

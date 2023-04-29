@@ -1,3 +1,8 @@
-#!/bin/bash
-FZF_DEFAULT_OPTS="--height ${FZF_TMUX_HEIGHT:-40%} --reverse $FZF_DEFAULT_OPTS $FZF_COMPLETION_OPTS" \
-    fzf --prompt "> $1" -0 -1
+#!/usr/bin/env bash
+
+sed="$( { which gsed || echo sed; } 2>/dev/null)"
+
+prefix="$(<<<"$1" "$sed" 's/[[*^$.]/\\&/g')"
+sed "s/^$(<<<"$1" "$sed" 's/././g')/\x1b[37m&\x1b[0m/" \
+| FZF_DEFAULT_OPTS="--height ${FZF_TMUX_HEIGHT:-40%} --reverse $FZF_DEFAULT_OPTS $FZF_COMPLETION_OPTS" \
+    fzf --prompt "> $1" -0 -1 -d "^$prefix" --nth=2 --ansi

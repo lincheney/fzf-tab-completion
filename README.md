@@ -16,12 +16,14 @@ rather than [creating a new mechanism](https://github.com/junegunn/fzf/wiki/Exam
 ## Installation
 
 1. You need to [install fzf](https://github.com/junegunn/fzf#installation) first.
+1. On OSX, you also need to GNU awk, e.g. `brew install gawk`
 1. Clone this repository: `git clone https://github.com/lincheney/fzf-tab-completion ...`
     * you can also choose to download only the scripts you need, up to you.
 1. Follow instructions on how to set up for:
     * [zsh](#zsh)
     * [bash](#bash)
     * [readline](#readline)
+    * [nodejs](#nodejs-repl)
 1. The following environment variables are supported, just as in fzf's "vanilla" completion.
     * `$FZF_TMUX_HEIGHT`
     * `$FZF_COMPLETION_OPTS`
@@ -42,6 +44,12 @@ If you have also enabled fzf's zsh completion, then the `bindkey` line is option
 
 Note that this does not provide `**`-style triggers,
 you will need to enable fzf's zsh completion _as well_.
+
+#### --tiebreak=chunk
+
+The default `fzf` tiebreak setting is line: `Prefers line with shorter length`.
+The length of the zsh display strings may skew the ordering of the results even though they are not part of the match.
+You may find that adding the `fzf` flag `--tiebreak=chunk` to the environment variable `$FZF_COMPLETION_OPTS` provides better behaviour.
 
 #### tmux
 
@@ -67,20 +75,23 @@ This allows you to have different options based on the command being completed
 
 This is most useful for changing the `--preview` option.
 Use `{1}` for the selected text (or `{+1}` if using multi-select).
+Note `{1}` or `{+1}` will come through "shell-escaped", so you will need to unescape it, e.g. using `eval` or `printf %b`
 
 ```bash
 # basic file preview for ls (you can replace with something more sophisticated than head)
-zstyle ':completion::*:ls::*' fzf-completion-opts --preview='head {1}'
+zstyle ':completion::*:ls::*' fzf-completion-opts --preview='eval head {1}'
 
 # preview when completing env vars (note: only works for exported variables)
-zstyle ':completion::*:(-command-|-parameter-|-brace-parameter-|export|unset|expand):*' fzf-completion-opts --preview='eval echo {1}'
+# eval twice, first to unescape the string, second to expand the $variable
+zstyle ':completion::*:(-command-|-parameter-|-brace-parameter-|export|unset|expand):*' fzf-completion-opts --preview='eval eval echo {1}'
 
 # preview a `git status` when completing git add
 zstyle ':completion::*:git::git,add,*' fzf-completion-opts --preview='git -c color.status=always status --short'
 
 # if other subcommand to git is given, show a git diff or git log
 zstyle ':completion::*:git::*,[a-z]*' fzf-completion-opts --preview='
-for arg in {+1}; do
+eval set -- {+1}
+for arg in "$@"; do
     { git diff --color=always -- "$arg" | git log --color=always "$arg" } 2>/dev/null
 done'
 ```
@@ -93,8 +104,38 @@ source /path/to/fzf-tab-completion/bash/fzf-bash-completion.sh
 bind -x '"\t": fzf_bash_completion'
 ```
 
+Note that this does not provide `**`-style triggers,
+you will need to enable fzf's bash completion _as well_.
+
 If you are using a `bash` that is dynamically linked against readline (`LD_PRELOAD= ldd $(which bash)`)
 you may prefer (or not!) to use the [readline](#readline) method instead.
+
+#### Autocomplete common prefix
+
+By default, fzf is always shown whenever there are at least 2 matches.
+You can change this to a more "vanilla" tab completion experience where
+it attempts to complete the longest common prefix *before* showing matches in fzf.
+
+This is controlled by the variables
+* `FZF_COMPLETION_AUTO_COMMON_PREFIX=true` - completes the common prefix if it is also a match
+* `FZF_COMPLETION_AUTO_COMMON_PREFIX_PART=true` - with the above variable, completes the common prefix even if it is not a match
+
+For example, if we have following files in a directory:
+```
+abcdef-1234
+abcdef-5678
+abc
+other
+```
+
+With `FZF_COMPLETION_AUTO_COMMON_PREFIX=true`:
+* when completing `ls <tab>`, it will display fzf with all 4 files (as normal)
+* when completing `ls a<tab>`, it will automatically complete to `ls abc`. 
+    Pressing tab again will show fzf with the first 3 files.
+* when completing `ls abcd<tab>` it will show fzf with the first 2 files (as normal)
+* With `FZF_COMPLETION_AUTO_COMMON_PREFIX_PART=true` set as well:
+    * when completing `ls abcd<tab>`, it will automatically complete to `ls abcdef-`.
+        Pressing tab again will show fzf with the first 2 files.
 
 #### tmux
 
@@ -148,6 +189,13 @@ These are the applications that I have seen working:
 * `gdb`
 * `sqlite3`
 * `bash` (only when not statically but dynamically linked to libreadline)
+
+## nodejs repl
+
+1. Copy/symlink `/path/to/fzf-tab-completion/readline/bin/rl_custom_complete` into your `$PATH`
+1. Then run `node -r /path/to/fzf-tab-completion.git/node/fzf-node-completion.js`
+    * You may wish to add a shell alias to your `zshrc`/`bashrc` to avoid typing out the full command each time, e.g.:
+        `alias node='node -r /path/to/fzf-tab-completion.git/node/fzf-node-completion.js`
 
 ## Related projects
 

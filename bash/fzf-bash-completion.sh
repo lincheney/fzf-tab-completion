@@ -324,7 +324,7 @@ fzf_bash_completer() {
         # kill descendant processes of coproc
         descend_process () {
             printf '%s\n' "$1"
-            for pid in $(ps -o pid= --ppid "$1"); do
+            for pid in $(pgrep -P "$1"); do
                 descend_process "$pid"
             done
         }

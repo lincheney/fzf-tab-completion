@@ -305,8 +305,14 @@ fzf_bash_completer() {
         exec {__evaled}>&1
         coproc (
             (
+                count=0
                 _fzf_bash_completion_get_results "$@"
                 while (( $? == 124 )); do
+                    (( count ++ ))
+                    if (( count > 32 )); then
+                        echo "$1: possible retry loop" >/dev/tty
+                        break
+                    fi
                     _fzf_bash_completion_get_results "$@"
                 done
             ) | _fzf_bash_completion_unbuffered_awk '$0!="" && !x[$0]++' '$0 = "\x1b[37m" substr($0, 1, len) "\x1b[0m" sep substr($0, len+1)' -vlen="${#__unquoted}" -vsep="$_FZF_COMPLETION_SEP" \

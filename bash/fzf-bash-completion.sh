@@ -1,15 +1,16 @@
 _FZF_COMPLETION_SEP=$'\x01'
 
 # shell parsing stuff
-_fzf_bash_completion_awk="$( { which gawk || echo awk; } 2>/dev/null)"
-_fzf_bash_completion_sed="$( { which gsed || echo sed; } 2>/dev/null)"
+_fzf_bash_completion_awk="$( builtin command -v gawk &>/dev/null && echo gawk || echo awk )"
+_fzf_bash_completion_sed="$( builtin command -v gsed &>/dev/null && echo gsed || echo sed )"
+_fzf_bash_completion_grep="$( builtin command -v ggrep &>/dev/null && echo ggrep || echo builtin command grep )"
 
 _fzf_bash_completion_awk_escape() {
     "$_fzf_bash_completion_sed" 's/\\/\\\\\\\\/g; s/[[*^$.]/\\\\&/g' <<<"$1"
 }
 
 _fzf_bash_completion_shell_split() {
-    command grep -E -o \
+    "$_fzf_bash_completion_grep" -E -o \
         -e '[;(){}&\|:]' \
         -e '\|+|&+' \
         -e "(\\\\.|[^\"'[:space:];:(){}&\\|])+" \
@@ -58,7 +59,7 @@ _fzf_bash_completion_find_matching_bracket() {
         else
             (( count -- ))
         fi
-    done < <(command grep -F -e '(' -e ')' -n)
+    done < <("$_fzf_bash_completion_grep" -F -e '(' -e ')' -n)
     return 1
 }
 
@@ -72,8 +73,8 @@ _fzf_bash_completion_parse_dq() {
         while true; do
             # we are in a double quoted string
 
-            shell_start="$(<<<"$line" command grep -E -o '^(\\.|\$[^(]|[^$])*\$\(')"
-            string_end="$(<<<"$line" command grep -E -o '^(\\.|[^"])*"')"
+            shell_start="$(<<<"$line" "$_fzf_bash_completion_grep" -E -o '^(\\.|\$[^(]|[^$])*\$\(')"
+            string_end="$(<<<"$line" "$_fzf_bash_completion_grep" -E -o '^(\\.|[^"])*"')"
 
             if (( ${#string_end} && ( ! ${#shell_start} || ${#string_end} < ${#shell_start} )  )); then
                 # found end of string

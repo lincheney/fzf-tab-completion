@@ -10,7 +10,7 @@ _fzf_bash_completion_awk_escape() {
 }
 
 _fzf_bash_completion_shell_split() {
-    "$_fzf_bash_completion_grep" -E -o \
+    $_fzf_bash_completion_grep -E -o \
         -e '[;(){}&\|:]' \
         -e '\|+|&+' \
         -e "(\\\\.|[^\"'[:space:];:(){}&\\|])+" \
@@ -59,7 +59,7 @@ _fzf_bash_completion_find_matching_bracket() {
         else
             (( count -- ))
         fi
-    done < <("$_fzf_bash_completion_grep" -F -e '(' -e ')' -n)
+    done < <($_fzf_bash_completion_grep -F -e '(' -e ')' -n)
     return 1
 }
 
@@ -73,8 +73,8 @@ _fzf_bash_completion_parse_dq() {
         while true; do
             # we are in a double quoted string
 
-            shell_start="$(<<<"$line" "$_fzf_bash_completion_grep" -E -o '^(\\.|\$[^(]|[^$])*\$\(')"
-            string_end="$(<<<"$line" "$_fzf_bash_completion_grep" -E -o '^(\\.|[^"])*"')"
+            shell_start="$(<<<"$line" $_fzf_bash_completion_grep -E -o '^(\\.|\$[^(]|[^$])*\$\(')"
+            string_end="$(<<<"$line" $_fzf_bash_completion_grep -E -o '^(\\.|[^"])*"')"
 
             if (( ${#string_end} && ( ! ${#shell_start} || ${#string_end} < ${#shell_start} )  )); then
                 # found end of string

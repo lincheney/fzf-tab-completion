@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-sed="$( { which gsed || echo sed; } 2>/dev/null)"
+sed="$( builtin command -v gsed &>/dev/null && echo gsed || echo sed )"
 
 prefix="$(<<<"$1" "$sed" 's/[[*^$.]/\\&/g')"
 sed "s/^$(<<<"$1" "$sed" 's/././g')/\x1b[37m&\x1b[0m/" \

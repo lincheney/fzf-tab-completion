@@ -11,9 +11,9 @@ _fzf_bash_completion_awk_escape() {
 
 _fzf_bash_completion_shell_split() {
     $_fzf_bash_completion_grep -E -o \
+        -e '\|+|&+|<+|>+' \
         -e '[;(){}&\|]' \
-        -e '\|+|&+' \
-        -e "(\\\\.|[^\"'[:space:];(){}&\\|])+" \
+        -e "(\\\\.|[^\"'[:space:];(){}&\\|<>${wordbreaks}])+" \
         -e "\\\$'(\\\\.|[^'])*('|$)" \
         -e "'[^']*('|$)" \
         -e '"(\\.|\$($|[^(])|[^"$])*("|$)' \
@@ -183,6 +183,9 @@ fzf_bash_completion() {
     local COMP_WORDS COMP_CWORD COMP_POINT COMP_LINE
     local COMP_TYPE=37 # % == indicates menu completion
     local line="${READLINE_LINE:0:READLINE_POINT}"
+    local wordbreaks="$COMP_WORDBREAKS"
+    wordbreaks="${wordbreaks//[]^]/\\&}"
+    wordbreaks="${wordbreaks//[[:space:]]/}"
     readarray -t COMP_WORDS < <(_fzf_bash_completion_parse_line <<<"$line")
 
     if [[ "${#COMP_WORDS[@]}" = 0 || "$line" =~ .*[[:space:]]$ ]]; then
@@ -194,7 +197,15 @@ fzf_bash_completion() {
     if [[ ${#COMP_WORDS[@]} -gt 1 ]]; then
         _fzf_bash_completion_expand_alias "${COMP_WORDS[0]}"
     fi
-    COMP_LINE="${COMP_WORDS[*]}"
+
+    COMP_LINE=''
+    local word
+    for word in "${COMP_WORDS[@]}"; do
+        if ! [[ "$word" =~ ^[$wordbreaks]$ ]]; then
+            COMP_LINE+=' '
+        fi
+        COMP_LINE+="$word"
+    done
     COMP_POINT="${#COMP_LINE}"
 
     local cmd="${COMP_WORDS[0]}"
@@ -205,6 +216,9 @@ fzf_bash_completion() {
         prev="${COMP_WORDS[COMP_CWORD-1]}"
     fi
     local cur="${COMP_WORDS[COMP_CWORD]}"
+    if [[ "$cur" =~ ^[$wordbreaks]$ ]]; then
+        cur=
+    fi
 
     local COMPREPLY=
     fzf_bash_completer "$cmd" "$cur" "$prev"

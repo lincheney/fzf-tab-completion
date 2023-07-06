@@ -23,6 +23,9 @@ fzf_completion() {
     fi
 
     eval "$(
+    local _fzf_sentinel1=b5a0da60-3378-4afd-ba00-bc1c269bef68
+    local _fzf_sentinel2=257539ae-7100-4cd8-b822-a1ef35335e88
+    (
         # set -o pipefail
         # hacks
         override_compadd() { compadd() { _fzf_completion_compadd "$@"; }; }
@@ -84,8 +87,11 @@ fzf_completion() {
                     _main_complete 2>&1
                 )"
                 printf "stderr='%s'\\n" "${stderr//'/'\''}" >&"${__evaled}"
+                # if a process forks and it holds onto the stdout handles, we may end up blocking waiting for it to close it
+                # instead, the sed q below will quit as soon as it gets a blank line without waiting
+                echo
             # need to get awk to be unbuffered either by using -W interactive or system("")
-            ) | "$_fzf_bash_completion_awk" -W interactive -F"$_FZF_COMPLETION_SEP" '$1!="" && !x[$1]++ { print $0; system("") }' 2>/dev/null
+            ) | sed '/^$/q' | "$_fzf_bash_completion_awk" -W interactive -F"$_FZF_COMPLETION_SEP" '/^$/{exit}; $1!="" && !x[$1]++ { print $0; system("") }' 2>/dev/null
         )
         coproc_pid="$!"
         value="$(_fzf_completion_selector <&p)"
@@ -93,6 +99,8 @@ fzf_completion() {
         kill -- -"$coproc_pid" 2>/dev/null && wait "$coproc_pid"
 
         printf "code='%s'; value='%s'\\n" "${code//'/'\''}" "${value//'/'\''}"
+        printf '%s\n' ": $_fzf_sentinel1$_fzf_sentinel2"
+    ) | sed "/$_fzf_sentinel1$_fzf_sentinel2/q"
     )" 2>/dev/null
 
     compstate[insert]=unambiguous

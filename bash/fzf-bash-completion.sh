@@ -306,6 +306,9 @@ fzf_bash_completer() {
     { complete -p -- "$1" || __load_completion "$1"; } &>/dev/null
 
     eval "$(
+    local _fzf_sentinel1=b5a0da60-3378-4afd-ba00-bc1c269bef68
+    local _fzf_sentinel2=257539ae-7100-4cd8-b822-a1ef35335e88
+    (
         set -o pipefail
 
         # hack: hijack compopt
@@ -325,7 +328,9 @@ fzf_bash_completer() {
                     fi
                     _fzf_bash_completion_get_results "$@"
                 done
-            ) | _fzf_bash_completion_unbuffered_awk '$0!="" && !x[$0]++' '$0 = "\x1b[37m" substr($0, 1, len) "\x1b[0m" sep substr($0, len+1)' -vlen="${#__unquoted}" -vsep="$_FZF_COMPLETION_SEP" \
+                printf '%s\n' "$_FZF_COMPLETION_SEP$_fzf_sentinel1$_fzf_sentinel2"
+            ) | $_fzf_bash_completion_sed -n "/$_fzf_sentinel1$_fzf_sentinel2/q; p" \
+              | _fzf_bash_completion_unbuffered_awk '$0!="" && !x[$0]++' '$0 = "\x1b[37m" substr($0, 1, len) "\x1b[0m" sep substr($0, len+1)' -vlen="${#__unquoted}" -vsep="$_FZF_COMPLETION_SEP" \
               | _fzf_bash_completion_auto_common_prefix "$__unquoted"
         )
         local coproc_pid="$COPROC_PID"
@@ -345,7 +350,10 @@ fzf_bash_completer() {
             done
         }
         kill -- $(descend_process "$coproc_pid") 2>/dev/null
-    )"
+
+        printf '%s\n' ": $_fzf_sentinel1$_fzf_sentinel2"
+    ) | $_fzf_bash_completion_sed -n "/$_fzf_sentinel1$_fzf_sentinel2/q; p"
+    )" 2>/dev/null
 
     if [ "$code" = 0 ]; then
         COMPREPLY="${COMPREPLY[*]}"

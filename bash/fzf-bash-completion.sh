@@ -17,7 +17,9 @@ _fzf_bash_completion_shell_split() {
         -e "\\\$'(\\\\.|[^'])*('|$)" \
         -e "'[^']*('|$)" \
         -e '"(\\.|\$($|[^(])|[^"$])*("|$)' \
-        -e '".*' -e .
+        -e '".*' \
+        -e '[[:space:]]+' \
+        -e .
 }
 
 _fzf_bash_completion_unbuffered_awk() {
@@ -125,7 +127,7 @@ _fzf_bash_completion_parse_line() {
         | tr \\n \\0 \
         | "$_fzf_bash_completion_sed" -r "$(cat <<'EOF'
 # collapse newlines
-s/\x00\s*\x00/\x00/g;
+s/\x00\x00/\x00/g;
 # leave trailing space
 s/\x00(\s*)$/\n\1/;
 # A & B -> (A, &, B)
@@ -188,25 +190,19 @@ fzf_bash_completion() {
     wordbreaks="${wordbreaks//[[:space:]]/}"
     readarray -t COMP_WORDS < <(_fzf_bash_completion_parse_line <<<"$line")
 
+    if [[ ${#COMP_WORDS[@]} -gt 1 ]]; then
+        _fzf_bash_completion_expand_alias "${COMP_WORDS[0]}"
+    fi
+
+    COMP_LINE="$(printf '%s' "${COMP_WORDS[@]}")"
+    COMP_POINT="${#COMP_LINE}"
+    # remove the ones that just spaces
+    readarray -t COMP_WORDS < <(printf %s\\n "${COMP_WORDS[@]}" | $_fzf_bash_completion_grep '[^[:space:]]')
     if [[ "${#COMP_WORDS[@]}" = 0 || "$line" =~ .*[[:space:]]$ ]]; then
         COMP_WORDS+=( '' )
     fi
     COMP_CWORD="${#COMP_WORDS[@]}"
     (( COMP_CWORD-- ))
-
-    if [[ ${#COMP_WORDS[@]} -gt 1 ]]; then
-        _fzf_bash_completion_expand_alias "${COMP_WORDS[0]}"
-    fi
-
-    COMP_LINE=''
-    local word
-    for word in "${COMP_WORDS[@]}"; do
-        if ! [[ "$word" =~ ^[$wordbreaks]$ ]]; then
-            COMP_LINE+=' '
-        fi
-        COMP_LINE+="$word"
-    done
-    COMP_POINT="${#COMP_LINE}"
 
     local cmd="${COMP_WORDS[0]}"
     local prev
@@ -245,7 +241,6 @@ _fzf_bash_completion_expand_alias() {
         value=( ${BASH_ALIASES[$1]} )
         if [ -n "${value[*]}" -a "${value[0]}" != "$1" ]; then
             COMP_WORDS=( "${value[@]}" "${COMP_WORDS[@]:1}" )
-            COMP_CWORD="$(( COMP_CWORD + ${#value[@]} - 1 ))"
         fi
     fi
 }

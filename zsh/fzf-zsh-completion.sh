@@ -206,6 +206,8 @@ _fzf_completion_compadd() {
     fi
 
     builtin compadd -Q -A __hits -D __disp "${__flags[@]}" "${__opts[@]}" "${__ipre[@]}" "${__apre[@]}" "${__hpre[@]}" "${__hsuf[@]}" "${__asuf[@]}" "${__isuf[@]}" "$@"
+    # urgh have to run it for real as some completion functions check compstate[nmatches]
+    builtin compadd -a __hits
     local code="$?"
     __flags="${(j..)__flags//[ak-]}"
     if [ -z "${__optskv[(i)-U]}" ]; then

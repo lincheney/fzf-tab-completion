@@ -268,7 +268,7 @@ _fzf_bash_completion_auto_common_prefix() {
         prefix_len="${#prefix}"
         prefix_is_full=1 # prefix == item
 
-        input_len="$(( ${#1} + ${#_FZF_COMPLETION_SEP} ))"
+        input_len="$(( ${#1} ))"
 
         while [ "$prefix_len" != "$input_len" ] && read -r item && items+=("$item"); do
             for ((i=$input_len; i<$prefix_len; i++)); do
@@ -287,7 +287,7 @@ _fzf_bash_completion_auto_common_prefix() {
         if [ "$prefix_len" != "$input_len" ]; then
             if [ "$FZF_COMPLETION_AUTO_COMMON_PREFIX_PART" == true ] || [ "$prefix_is_full" == 1 ]; then
                 [ "${items[1]}" ] && printf 'compl_nospace=1\n'>&"${__evaled}" # no space if not only one
-                tr -d "$_FZF_COMPLETION_SEP" <<< "${prefix:0:prefix_len}"
+                printf %s\\n "${prefix:0:prefix_len}"
                 return
             fi
         fi
@@ -330,8 +330,8 @@ fzf_bash_completer() {
                 done
                 printf '%s\n' "$_FZF_COMPLETION_SEP$_fzf_sentinel1$_fzf_sentinel2"
             ) | $_fzf_bash_completion_sed -n "/$_fzf_sentinel1$_fzf_sentinel2/q; p" \
-              | _fzf_bash_completion_unbuffered_awk '$0!="" && !x[$0]++' '$0 = "\x1b[37m" substr($0, 1, len) "\x1b[0m" sep substr($0, len+1)' -vlen="${#__unquoted}" -vsep="$_FZF_COMPLETION_SEP" \
-              | _fzf_bash_completion_auto_common_prefix "$__unquoted"
+              | _fzf_bash_completion_auto_common_prefix "$__unquoted" \
+              | _fzf_bash_completion_unbuffered_awk '$0!="" && !x[$0]++' '$0 = "\x1b[37m" substr($0, 1, len) "\x1b[0m" sep substr($0, len+1)' -vlen="${#__unquoted}" -vsep="$_FZF_COMPLETION_SEP"
         )
         local coproc_pid="$COPROC_PID"
         value="$(_fzf_bash_completion_selector "$1" "$__unquoted" "$3" <&"${COPROC[0]}")"

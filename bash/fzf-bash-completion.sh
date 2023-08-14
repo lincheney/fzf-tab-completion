@@ -147,11 +147,13 @@ EOF
 
 _fzf_bash_completion_compspec() {
     if [[ "$COMP_CWORD" == 0 && -z "$2" ]]; then
+        # If the command word is the empty string (completion attempted at the beginning of an empty line), any compspec defined with the -E option to complete is used.
         complete -p -E || printf '%s\n' 'complete -F _fzf_bash_completion_complete_commands -E'
     elif [[ "$COMP_CWORD" == 0 ]]; then
         complete -p -I || printf '%s\n' 'complete -F _fzf_bash_completion_complete_commands -I'
     else
-        complete -p -- "$1" || complete -p -D || printf '%s\n' 'complete -o filenames -F _fzf_bash_completion_fallback_completer'
+       # If the command word is a full pathname, a compspec for the full pathname is searched for first.  If no compspec is found for the full pathname, an attempt is made to find a compspec for the portion following the final slash.  If those searches do not result in a compspec, any compspec defined with the -D option to complete is used as the default
+        complete -p -- "$1" || complete -p -- "${1##*/}" || complete -p -D || printf '%s\n' 'complete -o filenames -F _fzf_bash_completion_fallback_completer'
     fi
 }
 

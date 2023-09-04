@@ -85,7 +85,22 @@ fzf_completion() {
                         { typeset -p -- $(typeset + | "$_fzf_bash_completion_grep" -vF -e 'local ' -e 'undefined ' | "$_fzf_bash_completion_awk" '{print $NF}') | "$_fzf_bash_completion_grep" -xvFf <(printf %s "$full_variables") >&"${__evaled}" } 2>/dev/null
                     }
                     trap _fzf_completion_preexit EXIT TERM
+
                     _main_complete 2>&1
+
+                    # try expand if no matches
+                    if (( compstate[nmatches] == 0 )); then
+                        local completers
+                        zstyle -a ':completion:*' completer completers
+                        # but not if _expand was already in completers
+                        if (( ! "${completers[(Ie)_expand]}" )); then
+                            # produce only one big expansion (instead of individual entries)
+                            zstyle ':completion:*' tag-order all-expansions
+                            # manually invoke _expand here
+                            _expand
+                        fi
+                    fi
+
                 )"
                 printf "stderr='%s'\\n" "${stderr//'/'\''}" >&"${__evaled}"
                 # if a process forks and it holds onto the stdout handles, we may end up blocking waiting for it to close it
@@ -207,7 +222,7 @@ _fzf_completion_compadd() {
     fi
 
     builtin compadd -Q -A __hits -D __disp "${__flags[@]}" "${__opts[@]}" "${__ipre[@]}" "${__apre[@]}" "${__hpre[@]}" "${__hsuf[@]}" "${__asuf[@]}" "${__isuf[@]}" "$@"
-    # urgh have to run it for real as some completion functions check compstate[nmatches]
+    # have to run it for real as some completion functions check compstate[nmatches]
     builtin compadd -a __hits
     local code="$?"
     __flags="${(j..)__flags//[ak-]}"

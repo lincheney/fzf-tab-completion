@@ -81,7 +81,8 @@ fzf_completion() {
                     _fzf_completion_preexit() {
                         trap -
                         functions + | "$_fzf_bash_completion_grep"  -F -vx -e "$(functions -u +)" -e "$full_functions" | while read -r f; do which -- "$f"; done >&"${__evaled}"
-                        { typeset -p -- $(typeset + | "$_fzf_bash_completion_grep"  -vF 'local ' | "$_fzf_bash_completion_awk" '{print $NF}') | "$_fzf_bash_completion_grep" -xvFf <(printf %s "$full_variables") >&"${__evaled}" } 2>/dev/null
+                        # skip local and autoload vars
+                        { typeset -p -- $(typeset + | "$_fzf_bash_completion_grep" -vF -e 'local ' -e 'undefined ' | "$_fzf_bash_completion_awk" '{print $NF}') | "$_fzf_bash_completion_grep" -xvFf <(printf %s "$full_variables") >&"${__evaled}" } 2>/dev/null
                     }
                     trap _fzf_completion_preexit EXIT TERM
                     _main_complete 2>&1

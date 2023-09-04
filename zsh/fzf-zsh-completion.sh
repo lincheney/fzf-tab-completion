@@ -98,7 +98,7 @@ fzf_completion() {
                             # produce only one big expansion (instead of individual entries)
                             zstyle ':completion:*' tag-order all-expansions
                             # manually invoke _expand here
-                            _expand
+                            _expand 2>&1
                         fi
                     fi
 

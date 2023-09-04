@@ -51,7 +51,8 @@ fzf_completion() {
 
         # all except autoload functions
         local full_variables="$(typeset -p)"
-        local full_functions="$(functions + | "$_fzf_bash_completion_grep"  -F -vx "$(functions -u +)")"
+        local full_functions="$(functions + | "$_fzf_bash_completion_grep" -F -vx "$(functions -u +)")"
+        local autoload_variables="$(typeset + | "$_fzf_bash_completion_grep" -F 'undefined ' | "$_fzf_bash_completion_awk" '{print $NF}')"
 
         # do not allow grouping, it stuffs up display strings
         zstyle ":completion:*:*" list-grouped no
@@ -82,7 +83,7 @@ fzf_completion() {
                         trap -
                         functions + | "$_fzf_bash_completion_grep"  -F -vx -e "$(functions -u +)" -e "$full_functions" | while read -r f; do which -- "$f"; done >&"${__evaled}"
                         # skip local and autoload vars
-                        { typeset -p -- $(typeset + | "$_fzf_bash_completion_grep" -vF -e 'local ' -e 'undefined ' | "$_fzf_bash_completion_awk" '{print $NF}') | "$_fzf_bash_completion_grep" -xvFf <(printf %s "$full_variables") >&"${__evaled}" } 2>/dev/null
+                        { typeset -p -- $(typeset + | "$_fzf_bash_completion_grep" -vF -e 'local ' -e 'undefined ' | "$_fzf_bash_completion_awk" '{print $NF}' | "$_fzf_bash_completion_grep" -vFx "$autoload_variables") | "$_fzf_bash_completion_grep" -xvFf <(printf %s "$full_variables") >&"${__evaled}" } 2>/dev/null
                     }
                     trap _fzf_completion_preexit EXIT TERM
 

@@ -87,19 +87,15 @@ fzf_completion() {
                     }
                     trap _fzf_completion_preexit EXIT TERM
 
-                    _main_complete 2>&1
-
-                    # try expand if no matches
-                    if (( compstate[nmatches] == 0 )); then
-                        local completers
-                        zstyle -a ':completion:*' completer completers
-                        # but not if _expand was already in completers
-                        if (( ! "${completers[(Ie)_expand]}" )); then
-                            # produce only one big expansion (instead of individual entries)
-                            zstyle ':completion:*' tag-order all-expansions
-                            # manually invoke _expand here
-                            _expand 2>&1
-                        fi
+                    # Attempt shell expansion on the current word.  If that fails, attempt completion.
+                    if [[ -z "${words[CURRENT]}" ]] || (
+                        # produce only one big expansion (instead of individual entries)
+                        zstyle ':completion:*' tag-order all-expansions
+                        # manually invoke _expand here
+                        _expand 2>&2
+                        (( compstate[nmatches] == 0 ))
+                    ); then
+                        _main_complete 2>&1
                     fi
 
                 )"
@@ -209,6 +205,7 @@ _fzf_completion_compadd() {
     local __filenames="${__flags[(r)-f]}"
     local __noquote="${__flags[(r)-Q]}"
     local __is_param="${__flags[(r)-e]}"
+    local __no_matching="${__flags[(r)-U]}"
 
     if [ -n "${__optskv[(i)-A]}${__optskv[(i)-O]}${__optskv[(i)-D]}" ]; then
         # handle -O -A -D
@@ -224,7 +221,7 @@ _fzf_completion_compadd() {
 
     builtin compadd -Q -A __hits -D __disp "${__flags[@]}" "${__opts[@]}" "${__ipre[@]}" "${__apre[@]}" "${__hpre[@]}" "${__hsuf[@]}" "${__asuf[@]}" "${__isuf[@]}" "$@"
     # have to run it for real as some completion functions check compstate[nmatches]
-    builtin compadd -a __hits
+    builtin compadd $__no_matching -a __hits
     local code="$?"
     __flags="${(j..)__flags//[ak-]}"
     if [ -z "${__optskv[(i)-U]}" ]; then

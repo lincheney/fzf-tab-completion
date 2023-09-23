@@ -30,6 +30,8 @@ fzf_completion() {
         # hacks
         override_compadd() { compadd() { _fzf_completion_compadd "$@"; }; }
         override_compadd
+        # some completions change zstyle so need to propagate that out
+        zstyle() { _fzf_completion_zstyle "$@"; }
 
         # massive hack
         # _approximate also overrides _compadd, so we have to override their one
@@ -55,7 +57,7 @@ fzf_completion() {
         local autoload_variables="$(typeset + | "$_fzf_bash_completion_grep" -F 'undefined ' | "$_fzf_bash_completion_awk" '{print $NF}')"
 
         # do not allow grouping, it stuffs up display strings
-        zstyle ":completion:*:*" list-grouped no
+        builtin zstyle ":completion:*:*" list-grouped no
 
         local curcontext="${curcontext:-}"
         local _FZF_COMPLETION_CONTEXT
@@ -73,7 +75,7 @@ fzf_completion() {
         _FZF_COMPLETION_CONTEXT=":completion:${curcontext}:complete:$_FZF_COMPLETION_CONTEXT"
 
         local _FZF_COMPLETION_SEARCH_DISPLAY=0
-        if zstyle -t "$_FZF_COMPLETION_CONTEXT" fzf-search-display; then
+        if builtin zstyle -t "$_FZF_COMPLETION_CONTEXT" fzf-search-display; then
             _FZF_COMPLETION_SEARCH_DISPLAY=1
         fi
 
@@ -96,7 +98,7 @@ fzf_completion() {
                     # Attempt shell expansion on the current word.  If that fails, attempt completion.
                     if [[ -z "${words[CURRENT]}" ]] || (
                         # produce only one big expansion (instead of individual entries)
-                        zstyle ':completion:*' tag-order all-expansions
+                        builtin zstyle ':completion:*' tag-order all-expansions
                         # manually invoke _expand here
                         _expand 2>&2
                         (( compstate[nmatches] == 0 ))
@@ -201,6 +203,13 @@ _fzf_completion_selector() {
     code="$?"
     tput cuu1 >/dev/tty
     return "$code"
+}
+
+_fzf_completion_zstyle() {
+    if [[ "$1" != -* ]]; then
+        printf 'zstyle %q ' "$@" >&"${__evaled}"
+    fi
+    builtin zstyle "$@"
 }
 
 _fzf_completion_compadd() {

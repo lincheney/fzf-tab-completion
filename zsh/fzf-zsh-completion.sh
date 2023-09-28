@@ -207,7 +207,7 @@ _fzf_completion_selector() {
 
 _fzf_completion_zstyle() {
     if [[ "$1" != -* ]]; then
-        printf 'zstyle %q ' "$@" >&"${__evaled}"
+        { printf 'zstyle %q ' "$@"; printf \\n } >&"${__evaled}"
     fi
     builtin zstyle "$@"
 }

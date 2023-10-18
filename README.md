@@ -67,6 +67,38 @@ zstyle ':completion:*:*:git:*' fzf-search-display true
 zstyle ':completion:*' fzf-search-display true
 ```
 
+#### Specifying keybindings
+
+You can specify `fzf` keybindings to execute shell commands *after* `fzf` has closed.
+This is configurable via the `fzf-completion-keybindings` zstyle.
+
+Keybinds look like: `KEY:SCRIPT`
+When `KEY` is pressed, `fzf` will *exit* and the zsh `SCRIPT` will run.
+If the keybind is given in the form `KEY:accept:SCRIPT` then the selected matches will also be completed before `SCRIPT` is run.
+`KEY` is any valid `fzf` key.
+
+There is an additional function `repeat-fzf-completion` that can be called in the `SCRIPT` to retrigger `fzf` completion.
+
+No keybinds are configured by default.
+
+```bash
+# press ctrl-r to repeat completion *without* accepting i.e. reload the completion
+# press right to accept the completion and retrigger it
+# press alt-enter to accept the completion and run it
+keys=(
+    ctrl-r:'repeat-fzf-completion'
+    right:accept:'repeat-fzf-completion'
+    alt-enter:accept:'zle accept-line'
+)
+
+zstyle ':completion:*' fzf-completion-keybindings "${keys[@]}"
+# also accept and retrigger completion when pressing / when completing cd
+zstyle ':completion::*:cd:*' fzf-completion-keybindings "${keys[@]}" /:accept:'repeat-fzf-completion'
+```
+
+Note that you can still specify the normal `--bind ...` options in e.g. `$FZF_COMPLETION_OPTS`
+if you need to perform `fzf` specific actions or don't need to run zsh commands.
+
 #### Specifying custom fzf options
 
 You can specify custom `fzf` options with the `fzf-completion-opts` style.

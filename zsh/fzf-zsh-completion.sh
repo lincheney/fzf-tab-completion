@@ -5,6 +5,7 @@ _FZF_COMPLETION_SEP=$'\u00a0'
 _FZF_COMPLETION_SPACE_SEP=$'\v'
 _FZF_COMPLETION_NONSPACE=$'\u00ad'
 _FZF_COMPLETION_FLAGS=( a k f q Q e n U l 1 2 C )
+_FZF_COMPLETION_KEYBINDINGS=50
 
 zmodload zsh/zselect
 zmodload zsh/system
@@ -12,12 +13,34 @@ zmodload zsh/system
 _fzf_bash_completion_awk="$( builtin command -v gawk &>/dev/null && echo gawk || echo awk )"
 _fzf_bash_completion_grep="$( builtin command -v ggrep &>/dev/null && echo ggrep || echo grep )"
 
+repeat-fzf-completion() {
+    __repeat=1
+}
+
 fzf_completion() {
+    local __repeat=1 __code= __action=
+    while (( __repeat )); do
+        __code=
+        __repeat=0
+        __action=
+        # run the actual completion widget
+        zle _fzf_completion
+
+        if [[ -n "$__action" ]]; then
+            eval "$__action"
+            zle reset-prompt
+        fi
+    done
+}
+
+_fzf_completion() {
     emulate -LR zsh +o ALIASES
     setopt interactivecomments
-    local value code stderr
+    local __value= __stderr=
     local __compadd_args=()
 
+    __code=
+    __stderr=
     if zstyle -t ':completion:' show-completer; then
         zle -R 'Loading matches ...'
     fi
@@ -28,15 +51,15 @@ fzf_completion() {
     (
         # set -o pipefail
         # hacks
-        override_compadd() { compadd() { _fzf_completion_compadd "$@"; }; }
-        override_compadd
+        __override_compadd() { compadd() { _fzf_completion_compadd "$@"; }; }
+        __override_compadd
         # some completions change zstyle so need to propagate that out
         zstyle() { _fzf_completion_zstyle "$@"; }
 
         # massive hack
         # _approximate also overrides _compadd, so we have to override their one
-        override_approximate() {
-            functions[_approximate]="unfunction compadd; { ${functions[_approximate]//builtin compadd /_fzf_completion_compadd } } always { override_compadd }"
+        __override_approximate() {
+            functions[_approximate]="unfunction compadd; { ${functions[_approximate]//builtin compadd /_fzf_completion_compadd } } always { __override_compadd }"
         }
 
         if [[ "$functions[_approximate]" == 'builtin autoload'* ]]; then
@@ -44,17 +67,17 @@ fzf_completion() {
                 unfunction _approximate
                 printf %s\\n "builtin autoload +XUz _approximate" >&"${__evaled}"
                 builtin autoload +XUz _approximate
-                override_approximate
+                __override_approximate
                 _approximate "$@"
             }
         else
-            override_approximate
+            __override_approximate
         fi
 
         # all except autoload functions
-        local full_variables="$(typeset -p)"
-        local full_functions="$(functions + | "$_fzf_bash_completion_grep" -F -vx "$(functions -u +)")"
-        local autoload_variables="$(typeset + | "$_fzf_bash_completion_grep" -F 'undefined ' | "$_fzf_bash_completion_awk" '{print $NF}')"
+        local __full_variables="$(typeset -p)"
+        local __full_functions="$(functions + | "$_fzf_bash_completion_grep" -F -vx "$(functions -u +)")"
+        local __autoload_variables="$(typeset + | "$_fzf_bash_completion_grep" -F 'undefined ' | "$_fzf_bash_completion_awk" '{print $NF}')"
 
         # do not allow grouping, it stuffs up display strings
         builtin zstyle ":completion:*:*" list-grouped no
@@ -86,12 +109,12 @@ fzf_completion() {
             (
                 local __comp_index=0 __autoloaded=()
                 exec {__stdout}>&1
-                stderr="$(
+                __stderr="$(
                     _fzf_completion_preexit() {
                         trap -
-                        functions + | "$_fzf_bash_completion_grep"  -F -vx -e "$(functions -u +)" -e "$full_functions" | while read -r f; do which -- "$f"; done >&"${__evaled}"
+                        functions + | "$_fzf_bash_completion_grep"  -F -vx -e "$(functions -u +)" -e "$__full_functions" | while read -r f; do which -- "$f"; done >&"${__evaled}"
                         # skip local and autoload vars
-                        { typeset -p -- $(typeset + | "$_fzf_bash_completion_grep" -vF -e 'local ' -e 'undefined ' | "$_fzf_bash_completion_awk" '{print $NF}' | "$_fzf_bash_completion_grep" -vFx "$autoload_variables") | "$_fzf_bash_completion_grep" -xvFf <(printf %s "$full_variables") >&"${__evaled}" } 2>/dev/null
+                        { typeset -p -- $(typeset + | "$_fzf_bash_completion_grep" -vF -e 'local ' -e 'undefined ' | "$_fzf_bash_completion_awk" '{print $NF}' | "$_fzf_bash_completion_grep" -vFx "$__autoload_variables") | "$_fzf_bash_completion_grep" -xvFf <(printf %s "$__full_variables") >&"${__evaled}" } 2>/dev/null
                     }
                     trap _fzf_completion_preexit EXIT TERM
 
@@ -100,14 +123,14 @@ fzf_completion() {
                         # produce only one big expansion (instead of individual entries)
                         builtin zstyle ':completion:*' tag-order all-expansions
                         # manually invoke _expand here
-                        _expand 2>&2
+                        _expand 2>&1
                         (( compstate[nmatches] == 0 ))
                     ); then
                         _main_complete 2>&1
                     fi
 
                 )"
-                printf "stderr='%s'\\n" "${stderr//'/'\''}" >&"${__evaled}"
+                printf "__stderr='%s'\\n" "${__stderr//'/'\''}" >&"${__evaled}"
                 # if a process forks and it holds onto the stdout handles, we may end up blocking waiting for it to close it
                 # instead, the sed q below will quit as soon as it gets a blank line without waiting
                 printf '%s\n' "$_FZF_COMPLETION_SEP$_fzf_sentinel1$_fzf_sentinel2"
@@ -116,25 +139,36 @@ fzf_completion() {
               | "$_fzf_bash_completion_awk" -W interactive -F"$_FZF_COMPLETION_SEP" '/^$/{exit}; $1!="" && !x[$1]++ { print $0; system("") }' 2>/dev/null
         )
         coproc_pid="$!"
-        value="$(_fzf_completion_selector <&p)"
-        code="$?"
+        __value="$(_fzf_completion_selector "$__code" <&p)"
+        __code="$?"
         kill -- -"$coproc_pid" 2>/dev/null && wait "$coproc_pid"
 
-        printf "code='%s'; value='%s'\\n" "${code//'/'\''}" "${value//'/'\''}"
+        printf "__code='%s'; __value='%s'\\n" "${__code//'/'\''}" "${__value//'/'\''}"
         printf '%s\n' ": $_fzf_sentinel1$_fzf_sentinel2"
     ) | sed -n "/$_fzf_sentinel1$_fzf_sentinel2/q; p"
     )" 2>/dev/null
 
     compstate[insert]=unambiguous
-    case "$code" in
-        0)
-            local opts index
+    case "$__code" in
+        $_FZF_COMPLETION_KEYBINDINGS)
+            if (( __code == _FZF_COMPLETION_KEYBINDINGS )); then
+                __action="$(head -n1 <<<"$__value")"
+                if [[ "$__action" == accept:* ]]; then
+                    __action="${__action#accept:}"
+                    __code=0
+                fi
+            fi
+            ;|
+        0|$_FZF_COMPLETION_KEYBINDINGS)
+            local opts= index= value
             while IFS="$_FZF_COMPLETION_SEP" read -r -A value; do
-                index="${value[3]}"
-                opts="${__compadd_args[$index]}"
-                value=( "${(Q)value[2]}" )
-                eval "$opts -a value"
-            done <<<"$value"
+                if (( !__code && ${#value[@]} >= 3 )); then
+                    index="${value[3]}"
+                    opts="${__compadd_args[$index]}"
+                    value=( "${(Q)value[2]}" )
+                    eval "$opts -a value"
+                fi
+            done <<<"$__value"
             # insert everything added by fzf
             compstate[insert]=all
             ;;
@@ -144,8 +178,8 @@ fzf_completion() {
             if (( ! ${#__compadd_args[@]} )) && zstyle -s :completion:::::warnings format msg; then
                 compadd -x "$msg"
             fi
-            compadd -x "$stderr"
-            stderr=
+            compadd -x "$__stderr"
+            __stderr=
             ;;
     esac
 
@@ -153,7 +187,7 @@ fzf_completion() {
     # so call it after this function returns
     eval "TRAPEXIT() {
         zle reset-prompt
-        _fzf_completion_post ${(q)stderr} ${(q)code}
+        _fzf_completion_post ${(q)__stderr} ${(q)__code}
     }"
 }
 
@@ -192,14 +226,18 @@ _fzf_completion_selector() {
         field=2,3
     fi
 
-    local flags=()
+    local flags=() keybinds=()
     zstyle -a "$_FZF_COMPLETION_CONTEXT" fzf-completion-opts flags
+    zstyle -a "$_FZF_COMPLETION_CONTEXT" fzf-completion-keybindings keybinds
+    while IFS=: read -r key action; do
+        flags+=( --bind "$key:become:printf %s\\\\n ${(q)action} {+}; exit $_FZF_COMPLETION_KEYBINDINGS" )
+    done < <( (( ${#keybinds[@]} )) && printf %s\\n "${keybinds[@]}")
 
     tput cud1 >/dev/tty # fzf clears the line on exit so move down one
     # fullvalue, value, index, display, show, prefix
     FZF_DEFAULT_OPTS="--height ${FZF_TMUX_HEIGHT:-40%} --reverse $FZF_DEFAULT_OPTS $FZF_COMPLETION_OPTS" \
         $(__fzfcmd 2>/dev/null || echo fzf) --ansi --prompt "> $PREFIX" -d "[${_FZF_COMPLETION_SEP}${_FZF_COMPLETION_SPACE_SEP}]" --with-nth 6,5,4 --nth "$field" "${flags[@]}" \
-        < <(printf %s\\n "${lines[@]}"; cat)
+        < <( (( ${#lines[@]} )) && printf %s\\n "${lines[@]}"; cat)
     code="$?"
     tput cuu1 >/dev/tty
     return "$code"
@@ -237,7 +275,7 @@ _fzf_completion_compadd() {
     builtin compadd -Q -A __hits -D __disp "${__flags[@]}" "${__opts[@]}" "${__ipre[@]}" "${__apre[@]}" "${__hpre[@]}" "${__hsuf[@]}" "${__asuf[@]}" "${__isuf[@]}" "$@"
     # have to run it for real as some completion functions check compstate[nmatches]
     builtin compadd $__no_matching -a __hits
-    local code="$?"
+    local __code="$?"
     __flags="${(j..)__flags//[ak-]}"
     if [ -z "${__optskv[(i)-U]}" ]; then
         # -U ignores $IPREFIX so add it to -i
@@ -310,8 +348,9 @@ _fzf_completion_compadd() {
         # fullvalue, value, index, display, show, prefix
         printf %s\\n "${(q)prefix}${(q)__real_str}${(q)__suffix}${_FZF_COMPLETION_SEP}${(q)__hit_str}${_FZF_COMPLETION_SEP}${__comp_index}${_FZF_COMPLETION_SEP}${__disp_str}${_FZF_COMPLETION_SEP}${__show_str}${_FZF_COMPLETION_SPACE_SEP}" >&"${__stdout}"
     done
-    return "$code"
+    return "$__code"
 }
 
-zle -C fzf_completion complete-word fzf_completion
+zle -C _fzf_completion complete-word _fzf_completion
+zle -N fzf_completion
 fzf_default_completion=fzf_completion

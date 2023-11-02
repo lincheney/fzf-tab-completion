@@ -135,7 +135,7 @@ _fzf_completion() {
                 # instead, the sed q below will quit as soon as it gets a blank line without waiting
                 printf '%s\n' "$_FZF_COMPLETION_SEP$_fzf_sentinel1$_fzf_sentinel2"
             # need to get awk to be unbuffered either by using -W interactive or system("")
-            ) | sed -n "/$_fzf_sentinel1$_fzf_sentinel2/q; p" \
+            ) | sed -un "/$_fzf_sentinel1$_fzf_sentinel2/q; p" \
               | "$_fzf_bash_completion_awk" -W interactive -F"$_FZF_COMPLETION_SEP" '/^$/{exit}; $1!="" && !x[$1]++ { print $0; system("") }' 2>/dev/null
         )
         coproc_pid="$!"
@@ -145,7 +145,7 @@ _fzf_completion() {
 
         printf "__code='%s'; __value='%s'\\n" "${__code//'/'\''}" "${__value//'/'\''}"
         printf '%s\n' ": $_fzf_sentinel1$_fzf_sentinel2"
-    ) | sed -n "/$_fzf_sentinel1$_fzf_sentinel2/q; p"
+    ) | sed -un "/$_fzf_sentinel1$_fzf_sentinel2/q; p"
     )" 2>/dev/null
 
     compstate[insert]=unambiguous

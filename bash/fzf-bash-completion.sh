@@ -331,7 +331,7 @@ fzf_bash_completer() {
                     _fzf_bash_completion_get_results "$@"
                 done
                 printf '%s\n' "$_FZF_COMPLETION_SEP$_fzf_sentinel1$_fzf_sentinel2"
-            ) | $_fzf_bash_completion_sed -n "/$_fzf_sentinel1$_fzf_sentinel2/q; p" \
+            ) | $_fzf_bash_completion_sed -un "/$_fzf_sentinel1$_fzf_sentinel2/q; p" \
               | _fzf_bash_completion_auto_common_prefix "$__unquoted" \
               | _fzf_bash_completion_unbuffered_awk '$0!="" && !x[$0]++' '$0 = "\x1b[37m" substr($0, 1, len) "\x1b[0m" sep substr($0, len+1)' -vlen="${#__unquoted}" -vsep="$_FZF_COMPLETION_SEP"
         )
@@ -354,7 +354,7 @@ fzf_bash_completer() {
         kill -- $(descend_process "$coproc_pid") 2>/dev/null
 
         printf '%s\n' ": $_fzf_sentinel1$_fzf_sentinel2"
-    ) | $_fzf_bash_completion_sed -n "/$_fzf_sentinel1$_fzf_sentinel2/q; p"
+    ) | $_fzf_bash_completion_sed -un "/$_fzf_sentinel1$_fzf_sentinel2/q; p"
     )" 2>/dev/null
 
     if [ "$code" = 0 ]; then

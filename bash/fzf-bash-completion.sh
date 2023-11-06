@@ -554,4 +554,6 @@ _fzf_bash_completion_compopt() {
         fi
         shift 2
     done
+    # default includes filenames
+    compl_filenames="$(( compl_filenames || compl_default ))"
 }

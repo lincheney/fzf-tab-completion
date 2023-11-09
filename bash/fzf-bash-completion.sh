@@ -470,6 +470,8 @@ _fzf_bash_completion_complete() {
                 # don't double invoke fzf
                 if [ -n "${compgen_opts[*]}" ]; then
                     if [[ "$compl_function" != _fzf_*_completion ]] || ! command -v "$compl_function" &>/dev/null; then
+                        # these are all filenames
+                        printf 'compl_filenames=1\n'>&"${__evaled}"
                         compgen "${compgen_opts[@]}" -- "$2" \
                         | _fzf_bash_completion_dir_marker \
                         | compl_filenames=1 _fzf_bash_completion_quote_filenames "$@"

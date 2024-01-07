@@ -15,10 +15,11 @@ _fzf_bash_completion_grep="$( builtin command -v ggrep &>/dev/null && echo ggrep
 
 repeat-fzf-completion() {
     __repeat=1
+    __query="$1"
 }
 
 fzf_completion() {
-    local __repeat=1 __code= __action=
+    local __repeat=1 __code= __action= __query=
     while (( __repeat )); do
         __code=
         __repeat=0
@@ -230,8 +231,11 @@ _fzf_completion_selector() {
     zstyle -a "$_FZF_COMPLETION_CONTEXT" fzf-completion-opts flags
     zstyle -a "$_FZF_COMPLETION_CONTEXT" fzf-completion-keybindings keybinds
     while IFS=: read -r key action; do
-        flags+=( --bind "$key:become:printf %s\\\\n ${(q)action} {+}; exit $_FZF_COMPLETION_KEYBINDINGS" )
+        flags+=( --bind "$key:become:printf %s\\\\n ${(q)action}\\ {q} {+}; exit $_FZF_COMPLETION_KEYBINDINGS" )
     done < <( (( ${#keybinds[@]} )) && printf %s\\n "${keybinds[@]}")
+    if [[ -n "$__query" ]]; then
+        flags+=( --query="$__query" )
+    fi
 
     tput cud1 >/dev/tty # fzf clears the line on exit so move down one
     # fullvalue, value, index, display, show, prefix

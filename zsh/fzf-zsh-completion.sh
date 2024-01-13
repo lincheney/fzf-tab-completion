@@ -266,7 +266,7 @@ _fzf_completion_compadd() {
 
     if [ -n "${__optskv[(i)-A]}${__optskv[(i)-O]}${__optskv[(i)-D]}" ]; then
         # handle -O -A -D
-        builtin compadd "${__flags[@]}" "${__opts[@]}" "${__ipre[@]}" "$@"
+        builtin compadd "${__flags[@]}" "${__opts[@]}" "${__ipre[@]}" "${__hpre[@]}" "$@"
         return "$?"
     fi
 

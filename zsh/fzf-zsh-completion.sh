@@ -219,6 +219,7 @@ _fzf_completion_selector() {
         else
             sysread -c 5 -t0.05 <&"$tty"
             [ "$REPLY" = $'\x1b' ] && return 130 # escape pressed
+            __query+="$REPLY"
         fi
     done
 

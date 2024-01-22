@@ -16,7 +16,8 @@ rather than [creating a new mechanism](https://github.com/junegunn/fzf/wiki/Exam
 ## Installation
 
 1. You need to [install fzf](https://github.com/junegunn/fzf#installation) first.
-1. On OSX, you also need GNU `awk` and GNU `grep`, e.g. `brew install gawk grep`
+1. If you are using OSX you may need to install some additional things:
+    * e.g. `brew install gawk grep coreutils`
 1. Clone this repository: `git clone https://github.com/lincheney/fzf-tab-completion ...`
     * you can also choose to download only the scripts you need, up to you.
 1. Follow instructions on how to set up for:

@@ -232,7 +232,7 @@ _fzf_completion_selector() {
     zstyle -a "$_FZF_COMPLETION_CONTEXT" fzf-completion-opts flags
     zstyle -a "$_FZF_COMPLETION_CONTEXT" fzf-completion-keybindings keybinds
     while IFS=: read -r key action; do
-        flags+=( --bind "$key:become:printf %s\\\\n ${(q)action}\\ {q} {+}; exit $_FZF_COMPLETION_KEYBINDINGS" )
+        flags+=( --bind "$key:become:printf %s%q\\\\n ${(q)action}\\  {q} {+}; exit $_FZF_COMPLETION_KEYBINDINGS" )
     done < <( (( ${#keybinds[@]} )) && printf %s\\n "${keybinds[@]}")
     if [[ -n "$__query" ]]; then
         flags+=( --query="$__query" )

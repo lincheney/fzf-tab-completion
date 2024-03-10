@@ -234,7 +234,7 @@ fzf_bash_completion() {
 
 _fzf_bash_completion_selector() {
     FZF_DEFAULT_OPTS="--height ${FZF_TMUX_HEIGHT:-40%} --reverse $FZF_DEFAULT_OPTS $FZF_COMPLETION_OPTS" \
-        $(__fzfcmd 2>/dev/null || echo fzf) -1 -0 --prompt "> $line" --nth 2 -d "$_FZF_COMPLETION_SEP" --ansi \
+        $(__fzfcmd 2>/dev/null || echo fzf) -1 -0 --prompt "${FZF_TAB_COMPLETION_PROMPT:-> }$line" --nth 2 -d "$_FZF_COMPLETION_SEP" --ansi \
     | tr -d "$_FZF_COMPLETION_SEP"
 }
 

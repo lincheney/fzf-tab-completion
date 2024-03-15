@@ -195,6 +195,11 @@ _fzf_bash_completion_loading_msg() {
 }
 
 fzf_bash_completion() {
+    # bail early if no_empty_cmd_completion
+    if ! [[ "$READLINE_LINE" =~ [^[:space:]] ]] && shopt -q no_empty_cmd_completion; then
+        return 1
+    fi
+
     printf '\r'
     command tput sc 2>/dev/null || echo -ne "\0337"
     printf '%s' "$(_fzf_bash_completion_loading_msg)"

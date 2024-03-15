@@ -148,7 +148,7 @@ EOF
 _fzf_bash_completion_compspec() {
     if [[ "$COMP_CWORD" == 0 && -z "$2" ]]; then
         # If the command word is the empty string (completion attempted at the beginning of an empty line), any compspec defined with the -E option to complete is used.
-        complete -p -E || printf '%s\n' 'complete -F _fzf_bash_completion_complete_commands -E'
+        complete -p -E || { ! shopt -q no_empty_cmd_completion && printf '%s\n' 'complete -F _fzf_bash_completion_complete_commands -E'; }
     elif [[ "$COMP_CWORD" == 0 ]]; then
         complete -p -I || printf '%s\n' 'complete -F _fzf_bash_completion_complete_commands -I'
     else
@@ -306,6 +306,10 @@ fzf_bash_completer() {
 
     # preload completions in top shell
     { complete -p -- "$1" || __load_completion "$1"; } &>/dev/null
+    local compspec
+    if ! compspec="$(_fzf_bash_completion_compspec "$1" &>/dev/null)"; then
+        return
+    fi
 
     eval "$(
     local _fzf_sentinel1=b5a0da60-3378-4afd-ba00-bc1c269bef68
@@ -365,8 +369,10 @@ fzf_bash_completer() {
 }
 
 _fzf_bash_completion_complete() {
-    local compgen_actions=()
-    local compspec="$(_fzf_bash_completion_compspec "$1" 2>/dev/null)"
+    local compgen_actions=() compspec=
+    if ! compspec="$(_fzf_bash_completion_compspec "$1" 2>/dev/null)"; then
+        return
+    fi
 
     eval "compspec=( $compspec )"
     set -- "${compspec[@]}" "$@"
@@ -412,8 +418,10 @@ _fzf_bash_completion_complete() {
     if [ -n "$compl_function" ]; then
         "$compl_function" "$@" >/dev/null
         if [ "$?" = 124 ]; then
-            local newcompspec="$(_fzf_bash_completion_compspec "$1" 2>/dev/null)"
-            if [ "$newcompspec" != "$compspec" ]; then
+            local newcompspec
+            if ! newcompspec="$(_fzf_bash_completion_compspec "$1" 2>/dev/null)"; then
+                return
+            elif [ "$newcompspec" != "$compspec" ]; then
                 return 124
             fi
             "$compl_function" "$@" >/dev/null

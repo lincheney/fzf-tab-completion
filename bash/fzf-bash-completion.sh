@@ -315,7 +315,7 @@ fzf_bash_completer() {
     # preload completions in top shell
     { complete -p -- "$1" || __load_completion "$1"; } &>/dev/null
     local compspec
-    if ! compspec="$(_fzf_bash_completion_compspec "$1" &>/dev/null)"; then
+    if ! compspec="$(_fzf_bash_completion_compspec "$@" 2>/dev/null)"; then
         return
     fi
 
@@ -378,7 +378,7 @@ fzf_bash_completer() {
 
 _fzf_bash_completion_complete() {
     local compgen_actions=() compspec=
-    if ! compspec="$(_fzf_bash_completion_compspec "$1" 2>/dev/null)"; then
+    if ! compspec="$(_fzf_bash_completion_compspec "$@" 2>/dev/null)"; then
         return
     fi
 
@@ -427,7 +427,7 @@ _fzf_bash_completion_complete() {
         "$compl_function" "$@" >/dev/null
         if [ "$?" = 124 ]; then
             local newcompspec
-            if ! newcompspec="$(_fzf_bash_completion_compspec "$1" 2>/dev/null)"; then
+            if ! newcompspec="$(_fzf_bash_completion_compspec "$@" 2>/dev/null)"; then
                 return
             elif [ "$newcompspec" != "$compspec" ]; then
                 return 124

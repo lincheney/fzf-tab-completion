@@ -184,22 +184,30 @@ fzf_bash_completion() {
     printf '%s' "$(_fzf_bash_completion_loading_msg)"
     command tput rc 2>/dev/null || echo -ne "\0338"
 
-    local COMP_WORDS COMP_CWORD COMP_POINT COMP_LINE
+    local COMP_WORDS=() COMP_CWORD COMP_POINT COMP_LINE
     local COMP_TYPE=37 # % == indicates menu completion
     local line="${READLINE_LINE:0:READLINE_POINT}"
     local wordbreaks="$COMP_WORDBREAKS"
     wordbreaks="${wordbreaks//[]^]/\\&}"
     wordbreaks="${wordbreaks//[[:space:]]/}"
-    readarray -t COMP_WORDS < <(_fzf_bash_completion_parse_line <<<"$line")
+    if [[ "$line" =~ [^[:space:]] ]]; then
+        readarray -t COMP_WORDS < <(_fzf_bash_completion_parse_line <<<"$line")
+    fi
 
     if [[ ${#COMP_WORDS[@]} -gt 1 ]]; then
         _fzf_bash_completion_expand_alias "${COMP_WORDS[0]}"
     fi
 
-    COMP_LINE="$(printf '%s' "${COMP_WORDS[@]}")"
+    printf -v COMP_LINE '%s' "${COMP_WORDS[@]}"
     COMP_POINT="${#COMP_LINE}"
     # remove the ones that just spaces
-    readarray -t COMP_WORDS < <(printf %s\\n "${COMP_WORDS[@]}" | $_fzf_bash_completion_grep '[^[:space:]]')
+    local i
+    # iterate in reverse
+    for (( i = ${#COMP_WORDS[@]}-1; i >= 0; i --)); do
+        if ! [[ "${COMP_WORDS[i]}" =~ [^[:space:]] ]]; then
+            unset COMP_WORDS[i]
+        fi
+    done
     if [[ "${#COMP_WORDS[@]}" = 0 || "$line" =~ .*[[:space:]]$ ]]; then
         COMP_WORDS+=( '' )
     fi

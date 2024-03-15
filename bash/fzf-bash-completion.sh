@@ -146,7 +146,9 @@ EOF
 }
 
 _fzf_bash_completion_compspec() {
-    if [[ "$COMP_CWORD" == 0 && -z "$2" ]]; then
+    if [[ "$2" =~ .*\$(\{?)([A-Za-z0-9_]*)$ ]]; then
+        printf '%s\n' 'complete -F _fzf_bash_completion_complete_variables'
+    elif [[ "$COMP_CWORD" == 0 && -z "$2" ]]; then
         # If the command word is the empty string (completion attempted at the beginning of an empty line), any compspec defined with the -E option to complete is used.
         complete -p -E || { ! shopt -q no_empty_cmd_completion && printf '%s\n' 'complete -F _fzf_bash_completion_complete_commands -E'; }
     elif [[ "$COMP_CWORD" == 0 ]]; then
@@ -172,6 +174,20 @@ _fzf_bash_completion_complete_commands() {
     # commands
     compopt -o filenames
     readarray -t COMPREPLY < <(compgen -abc -- "$2")
+}
+
+_fzf_bash_completion_complete_variables() {
+    if [[ "$2" =~ .*\$(\{?)([A-Za-z0-9_]*)$ ]]; then
+        # environment variables
+        local brace="${BASH_REMATCH[1]}"
+        local filter="${BASH_REMATCH[2]}"
+        if [ -n "$filter" ]; then
+            local prefix="${2:: -${#filter}}"
+        else
+            local prefix="$2"
+        fi
+        readarray -t COMPREPLY < <(compgen -v -P "$prefix" -S "${brace:+\}}" -- "$filter")
+    fi
 }
 
 _fzf_bash_completion_loading_msg() {
@@ -205,7 +221,7 @@ fzf_bash_completion() {
     # iterate in reverse
     for (( i = ${#COMP_WORDS[@]}-1; i >= 0; i --)); do
         if ! [[ "${COMP_WORDS[i]}" =~ [^[:space:]] ]]; then
-            unset COMP_WORDS[i]
+            COMP_WORDS=( "${COMP_WORDS[@]:0:i}" "${COMP_WORDS[@]:i+1}" )
         fi
     done
     if [[ "${#COMP_WORDS[@]}" = 0 || "$line" =~ .*[[:space:]]$ ]]; then
@@ -252,22 +268,6 @@ _fzf_bash_completion_expand_alias() {
         if [ -n "${value[*]}" -a "${value[0]}" != "$1" ]; then
             COMP_WORDS=( "${value[@]}" "${COMP_WORDS[@]:1}" )
         fi
-    fi
-}
-
-_fzf_bash_completion_get_results() {
-    if [[ "$2" =~ .*\$(\{?)([A-Za-z0-9_]*)$ ]]; then
-        # environment variables
-        local brace="${BASH_REMATCH[1]}"
-        local filter="${BASH_REMATCH[2]}"
-        if [ -n "$filter" ]; then
-            local prefix="${2:: -${#filter}}"
-        else
-            local prefix="$2"
-        fi
-        compgen -v -P "$prefix" -S "${brace:+\}}" -- "$filter"
-    else
-        _fzf_bash_completion_complete "$@"
     fi
 }
 
@@ -333,14 +333,14 @@ fzf_bash_completer() {
         coproc (
             (
                 count=0
-                _fzf_bash_completion_get_results "$@"
+                _fzf_bash_completion_complete "$@"
                 while (( $? == 124 )); do
                     (( count ++ ))
                     if (( count > 32 )); then
                         echo "$1: possible retry loop" >/dev/tty
                         break
                     fi
-                    _fzf_bash_completion_get_results "$@"
+                    _fzf_bash_completion_complete "$@"
                 done
                 printf '%s\n' "$_FZF_COMPLETION_SEP$_fzf_sentinel1$_fzf_sentinel2"
             ) | $_fzf_bash_completion_sed -un "/$_fzf_sentinel1$_fzf_sentinel2/q; p" \
@@ -382,10 +382,11 @@ _fzf_bash_completion_complete() {
         return
     fi
 
+    local args=( "$@" )
     eval "compspec=( $compspec )"
-    set -- "${compspec[@]}" "$@"
-    shift
-    while [ "$#" -gt 4 ]; do
+    set -- "${compspec[@]}"
+    shift # remove the complete command
+    while (( $# > 1 )); do
         case "$1" in
         -F)
             local compl_function="$2"
@@ -420,7 +421,7 @@ _fzf_bash_completion_complete() {
         esac
         shift
     done
-    shift
+    set -- "${args[@]}"
 
     COMPREPLY=()
     if [ -n "$compl_function" ]; then

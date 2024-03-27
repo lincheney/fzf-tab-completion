@@ -484,8 +484,8 @@ _fzf_bash_completion_complete() {
             printf '\n'
         ) | _fzf_bash_completion_apply_xfilter "$compl_xfilter" \
           | _fzf_bash_completion_unbuffered_awk '$0!=""' 'sub(find, replace)' -vfind='.*' -vreplace="$(printf %s "$compl_prefix" | "$_fzf_bash_completion_sed" 's/[&\]/\\&/g')&$(printf %s "$compl_suffix" | "$_fzf_bash_completion_sed" 's/[&\]/\\&/g')" \
-          | if IFS= read -r line; then
-                (printf '%s\n' "$line"; cat) | _fzf_bash_completion_quote_filenames "$@"
+          | if read -r line || (( ${#COMPREPLY[@]} )); then
+              ([[ -z "$line" ]] || printf '%s\n' "$line"; cat) | _fzf_bash_completion_quote_filenames "$@"
             else
                 # got no results
                 local compgen_opts=()

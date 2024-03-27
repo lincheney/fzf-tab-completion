@@ -337,6 +337,9 @@ fzf_bash_completer() {
         exec {__evaled}>&1
         coproc (
             (
+                # input from tty in case one of the completions wants fzf using $FZF_DEFAULT_COMMAND
+                exec </dev/tty
+
                 count=0
                 _fzf_bash_completion_complete "$@"
                 while (( $? == 124 )); do

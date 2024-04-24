@@ -269,11 +269,11 @@ fzf_bash_completion() {
     if [[ "$cur" =~ ^[$wordbreaks]$ ]]; then
         cur=
     fi
+    local raw_cur="${cur:+${raw_comp_words[-1]}}"
 
     local COMPREPLY=
     fzf_bash_completer "$cmd" "$cur" "$prev"
     if [ -n "$COMPREPLY" ]; then
-        local raw_cur="${cur:+${raw_comp_words[-1]}}"
         if [ -n "$raw_cur" ]; then
             line="${line::-${#raw_cur}}"
         fi
@@ -357,7 +357,6 @@ fzf_bash_completer() {
         # hack: hijack compopt
         compopt() { _fzf_bash_completion_compopt "$@"; }
 
-        local __unquoted="${2#[\"\']}"
         exec {__evaled}>&1
         coproc (
             (
@@ -376,11 +375,11 @@ fzf_bash_completer() {
                 done
                 printf '%s\n' "$_FZF_COMPLETION_SEP$_fzf_sentinel1$_fzf_sentinel2"
             ) | $_fzf_bash_completion_sed -un "/$_fzf_sentinel1$_fzf_sentinel2/q; p" \
-              | _fzf_bash_completion_auto_common_prefix "$__unquoted" \
-              | _fzf_bash_completion_unbuffered_awk '$0!="" && !x[$0]++' '$0 = "\x1b[37m" substr($0, 1, len) "\x1b[0m" sep substr($0, len+1)' -vlen="${#__unquoted}" -vsep="$_FZF_COMPLETION_SEP"
+              | _fzf_bash_completion_auto_common_prefix "$raw_cur" \
+              | _fzf_bash_completion_unbuffered_awk '$0!="" && !x[$0]++' '$0 = "\x1b[37m" substr($0, 1, len) "\x1b[0m" sep substr($0, len+1)' -vlen="${#raw_cur}" -vsep="$_FZF_COMPLETION_SEP"
         )
         local coproc_pid="$COPROC_PID"
-        value="$(_fzf_bash_completion_selector "$1" "$__unquoted" "$3" <&"${COPROC[0]}")"
+        value="$(_fzf_bash_completion_selector "$1" "$raw_cur" "$3" <&"${COPROC[0]}")"
         code="$?"
         value="$(<<<"$value" tr \\n \ )"
         value="${value% }"

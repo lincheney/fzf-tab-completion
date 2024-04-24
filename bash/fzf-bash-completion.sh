@@ -252,7 +252,7 @@ fzf_bash_completion() {
         fi
     done
     # add an extra word if last word ends with unescaped space
-    if [[ "${#COMP_WORDS[@]}" = 0 ]] || { [[ "$line" =~ ^(\\.|.)*$ ]] && [[ "${BASH_REMATCH[1]}" =~ ^[[:space:]]$ ]]; }; then
+    if [[ "${#COMP_WORDS[@]}" = 0 ]]; then
         COMP_WORDS+=( '' )
     fi
     COMP_CWORD="${#COMP_WORDS[@]}"

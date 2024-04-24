@@ -125,7 +125,8 @@ _fzf_bash_completion_unquote_strings() {
     while IFS= read -r line; do
         if [[ "$line" =~ ^\'[^\']*\'?$ ]]; then
             # single quoted with no single quotes inside
-            printf '%s\n' "${line:1:-1}"
+            line="${line%%\'}"
+            printf '%s\n' "${line:1}"
         elif [[ "$line" =~ ^\"(\\.|[^\"$])*\"?$ ]]; then
             # double quoted with all special characters quoted
             "$_fzf_bash_completion_sed" -r 's/\\(.)/\1/g' <<<"${line:1-1}"

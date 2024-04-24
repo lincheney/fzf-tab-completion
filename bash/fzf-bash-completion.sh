@@ -247,11 +247,14 @@ fzf_bash_completion() {
     # remove the ones that just spaces
     local i
     # iterate in reverse
-    for (( i = ${#COMP_WORDS[@]}-1; i >= 0; i --)); do
+    for (( i = ${#COMP_WORDS[@]}-2; i >= 0; i --)); do
         if ! [[ "${COMP_WORDS[i]}" =~ [^[:space:]] ]]; then
             COMP_WORDS=( "${COMP_WORDS[@]:0:i}" "${COMP_WORDS[@]:i+1}" )
         fi
     done
+    if ! [[ "${COMP_WORDS[-1]}" =~ [^[:space:]] ]]; then
+        COMP_WORDS[-1]=''
+    fi
     # add an extra word if last word ends with unescaped space
     if [[ "${#COMP_WORDS[@]}" = 0 ]]; then
         COMP_WORDS+=( '' )

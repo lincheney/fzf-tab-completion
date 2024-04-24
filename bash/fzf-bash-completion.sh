@@ -497,18 +497,17 @@ _fzf_bash_completion_complete() {
                     # these are all filenames
                     printf 'compl_filenames=1\n'>&"${__evaled}"
                     compgen "${compgen_opts[@]}" -- "$2" \
-                    | _fzf_bash_completion_dir_marker \
-                    | compl_filenames=1 _fzf_bash_completion_quote_filenames "$@"
+                    | compl_filenames=1 _fzf_bash_completion_quote_filenames "$@" \
+                    | _fzf_bash_completion_dir_marker
                 fi
             fi
 
         if [ "$compl_plusdirs" = 1 ]; then
             compgen -o dirnames -- "$2" \
-            | _fzf_bash_completion_dir_marker \
-            | compl_filenames=1 _fzf_bash_completion_quote_filenames "$@"
+            | compl_filenames=1 _fzf_bash_completion_quote_filenames "$@" \
+            | _fzf_bash_completion_dir_marker
         fi
     ) \
-    | _fzf_bash_completion_unbuffered_awk '' 'sub(find, replace)' -vfind="^$(_fzf_bash_completion_awk_escape "$2")" -vreplace="$("$_fzf_bash_completion_sed" -r 's/\\(.)/\1/g; s/[&\]/\\&/g' <<<"$2")" \
     | "$dir_marker"
 }
 
@@ -532,13 +531,20 @@ _fzf_bash_completion_apply_xfilter() {
 }
 
 _fzf_bash_completion_dir_marker() {
-    local line
+    local line expanded
     while IFS= read -r line; do
+        expanded="$line"
+
         # adapted from __expand_tilde_by_ref
-        if [[ "$line" == \~* ]]; then
-            eval "$(printf expanded=~%q "${line:1}")"
+        if [[ "$expanded" == \~* ]]; then
+            eval "$(printf expanded=~%q "${expanded:1}")"
         fi
-        [ -d "${expanded-"$line"}" ] && line="${line%/}/"
+
+        if [[ "$compl_noquote" != 1 && "$expanded" == *\\* ]]; then
+            expanded="$("$_fzf_bash_completion_sed" -r 's/\\(.)/\1/g' <<<"$expanded")"
+        fi
+
+        [ -d "$expanded" ] && line="${line%/}/"
         printf '%s\n' "$line"
     done
 }

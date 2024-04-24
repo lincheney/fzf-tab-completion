@@ -120,6 +120,26 @@ _fzf_bash_completion_parse_dq() {
     printf '%s\n' "$words"
 }
 
+_fzf_bash_completion_unquote_strings() {
+    local line
+    while IFS= read -r line; do
+        if [[ "$line" =~ ^\'[^\']*\'?$ ]]; then
+            # single quoted with no single quotes inside
+            printf '%s\n' "${line:1:-1}"
+        elif [[ "$line" =~ ^\"(\\.|[^\"$])*\"?$ ]]; then
+            # double quoted with all special characters quoted
+            "$_fzf_bash_completion_sed" -r 's/\\(.)/\1/g' <<<"${line:1-1}"
+        elif [[ "$line" == *\\* && "$line" =~ ^(\\.|[a-zA-Z0-9_])*$ ]]; then
+            # all special characters are quoted
+            "$_fzf_bash_completion_sed" -r 's/\\(.)/\1/g' <<<"$line"
+        else
+            # this string is either boring or too complicated to parse
+            # print as is
+            printf '%s\n' "$line"
+        fi
+    done
+}
+
 _fzf_bash_completion_parse_line() {
     _fzf_bash_completion_shell_split \
         | _fzf_bash_completion_parse_dq \
@@ -205,6 +225,7 @@ fzf_bash_completion() {
     printf '%s' "$(_fzf_bash_completion_loading_msg)"
     command tput rc 2>/dev/null || echo -ne "\0338"
 
+    local raw_comp_words=()
     local COMP_WORDS=() COMP_CWORD COMP_POINT COMP_LINE
     local COMP_TYPE=37 # % == indicates menu completion
     local line="${READLINE_LINE:0:READLINE_POINT}"
@@ -212,12 +233,13 @@ fzf_bash_completion() {
     wordbreaks="${wordbreaks//[]^]/\\&}"
     wordbreaks="${wordbreaks//[[:space:]]/}"
     if [[ "$line" =~ [^[:space:]] ]]; then
-        readarray -t COMP_WORDS < <(_fzf_bash_completion_parse_line <<<"$line")
+        readarray -t raw_comp_words < <(_fzf_bash_completion_parse_line <<<"$line")
     fi
 
-    if [[ ${#COMP_WORDS[@]} -gt 1 ]]; then
-        _fzf_bash_completion_expand_alias "${COMP_WORDS[0]}"
+    if [[ ${#raw_comp_words[@]} -gt 1 ]]; then
+        _fzf_bash_completion_expand_alias "${raw_comp_words[0]}"
     fi
+    readarray -t COMP_WORDS < <(printf '%s\n' "${raw_comp_words[@]}" | _fzf_bash_completion_unquote_strings)
 
     printf -v COMP_LINE '%s' "${COMP_WORDS[@]}"
     COMP_POINT="${#COMP_LINE}"
@@ -229,7 +251,8 @@ fzf_bash_completion() {
             COMP_WORDS=( "${COMP_WORDS[@]:0:i}" "${COMP_WORDS[@]:i+1}" )
         fi
     done
-    if [[ "${#COMP_WORDS[@]}" = 0 || "$line" =~ .*[[:space:]]$ ]]; then
+    # add an extra word if last word ends with unescaped space
+    if [[ "${#COMP_WORDS[@]}" = 0 ]] || { [[ "$line" =~ ^(\\.|.)*$ ]] && [[ "${BASH_REMATCH[1]}" =~ ^[[:space:]]$ ]]; }; then
         COMP_WORDS+=( '' )
     fi
     COMP_CWORD="${#COMP_WORDS[@]}"
@@ -250,11 +273,12 @@ fzf_bash_completion() {
     local COMPREPLY=
     fzf_bash_completer "$cmd" "$cur" "$prev"
     if [ -n "$COMPREPLY" ]; then
-        if [ -n "$cur" ]; then
-            line="${line::-${#cur}}"
+        local raw_cur="${cur:+${raw_comp_words[-1]}}"
+        if [ -n "$raw_cur" ]; then
+            line="${line::-${#raw_cur}}"
         fi
         READLINE_LINE="${line}${COMPREPLY}${READLINE_LINE:$READLINE_POINT}"
-        (( READLINE_POINT+=${#COMPREPLY} - ${#cur} ))
+        (( READLINE_POINT+=${#COMPREPLY} - ${#raw_cur} ))
     fi
 
     printf '\r'
@@ -553,12 +577,7 @@ _fzf_bash_completion_quote_filenames() {
     if [ "$compl_noquote" != 1 -a "$compl_filenames" = 1 ]; then
         local IFS line
         while IFS= read -r line; do
-            if [ "$line" = "$2" ]; then
-                printf '%s\n' "$line"
-            # never quote the prefix
-            elif [ "${line::${#2}}" = "$2" ]; then
-                printf '%s%q\n' "$2" "${line:${#2}}"
-            elif [ "${line::1}" = '~' ]; then
+            if [ "${line::1}" = '~' ]; then
                 printf '~%q\n' "${line:1}"
             else
                 printf '%q\n' "$line"

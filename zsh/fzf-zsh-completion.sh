@@ -267,7 +267,7 @@ _fzf_completion_compadd() {
 
     if [ -n "${__optskv[(i)-A]}${__optskv[(i)-O]}${__optskv[(i)-D]}" ]; then
         # handle -O -A -D
-        builtin compadd "${__flags[@]}" "${__opts[@]}" "${__ipre[@]}" "${__hpre[@]}" "$@"
+        builtin compadd "${__flags[@]}" "${__opts[@]}" "${__ipre[@]}" "${__hpre[@]}" -- "$@"
         return "$?"
     fi
 
@@ -277,7 +277,7 @@ _fzf_completion_compadd() {
         __disp=( "${(@P)__disp[2]}" )
     fi
 
-    builtin compadd -Q -A __hits -D __disp "${__flags[@]}" "${__opts[@]}" "${__ipre[@]}" "${__apre[@]}" "${__hpre[@]}" "${__hsuf[@]}" "${__asuf[@]}" "${__isuf[@]}" "$@"
+    builtin compadd -Q -A __hits -D __disp "${__flags[@]}" "${__opts[@]}" "${__ipre[@]}" "${__apre[@]}" "${__hpre[@]}" "${__hsuf[@]}" "${__asuf[@]}" "${__isuf[@]}" -- "$@"
     # have to run it for real as some completion functions check compstate[nmatches]
     builtin compadd $__no_matching -a __hits
     local __code="$?"

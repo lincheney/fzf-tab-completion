@@ -306,13 +306,13 @@ _fzf_bash_completion_expand_alias() {
 _fzf_bash_completion_auto_common_prefix() {
     if [ "$FZF_COMPLETION_AUTO_COMMON_PREFIX" = true ]; then
         local prefix item items prefix_len prefix_is_full input_len i
-        read -r prefix && items=("$prefix") || return
+        IFS= read -r prefix && items=("$prefix") || return
         prefix_len="${#prefix}"
         prefix_is_full=1 # prefix == item
 
         input_len="$(( ${#1} ))"
 
-        while [ "$prefix_len" != "$input_len" ] && read -r item && items+=("$item"); do
+        while [ "$prefix_len" != "$input_len" ] && IFS= read -r item && items+=("$item"); do
             for ((i=$input_len; i<$prefix_len; i++)); do
                 if [[ "${item:i:1}" != "${prefix:i:1}" ]]; then
                     prefix_len="$i"
@@ -510,7 +510,7 @@ _fzf_bash_completion_complete() {
             printf '\n'
         ) | _fzf_bash_completion_apply_xfilter "$compl_xfilter" \
           | _fzf_bash_completion_unbuffered_awk '$0!=""' 'sub(find, replace)' -vfind='.*' -vreplace="$(printf %s "$compl_prefix" | "$_fzf_bash_completion_sed" 's/[&\]/\\&/g')&$(printf %s "$compl_suffix" | "$_fzf_bash_completion_sed" 's/[&\]/\\&/g')" \
-          | if read -r line || (( ${#COMPREPLY[@]} )); then
+          | if IFS= read -r line || (( ${#COMPREPLY[@]} )); then
               ([[ -z "$line" ]] || printf '%s\n' "$line"; cat) | _fzf_bash_completion_quote_filenames "$@"
             else
                 # got no results

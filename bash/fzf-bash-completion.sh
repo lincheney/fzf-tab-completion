@@ -393,7 +393,7 @@ fzf_bash_completer() {
         # kill descendant processes of coproc
         descend_process () {
             printf '%s\n' "$1"
-            for pid in $(pgrep -P "$1"); do
+            for pid in $(ps -ef | "$_fzf_bash_completion_awk" -v ppid="$1" '$3 == ppid { print $2 }'); do
                 descend_process "$pid"
             done
         }

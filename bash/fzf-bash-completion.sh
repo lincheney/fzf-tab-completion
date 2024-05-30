@@ -255,8 +255,8 @@ fzf_bash_completion() {
     # add an extra blank word if last word is just space
     if [[ "${#COMP_WORDS[@]}" = 0 ]]; then
         COMP_WORDS+=( '' )
-    elif ! [[ "${COMP_WORDS[-1]}" =~ [^[:space:]] ]]; then
-        COMP_WORDS[-1]=''
+    elif ! [[ "${COMP_WORDS[${#COMP_WORDS[@]}-1]}" =~ [^[:space:]] ]]; then
+        COMP_WORDS[${#COMP_WORDS[@]}-1]=''
     fi
     COMP_CWORD="${#COMP_WORDS[@]}"
     (( COMP_CWORD-- ))

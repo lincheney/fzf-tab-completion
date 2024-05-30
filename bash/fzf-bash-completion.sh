@@ -300,6 +300,8 @@ _fzf_bash_completion_expand_alias() {
         if [ -n "${value[*]}" -a "${value[0]}" != "$1" ]; then
             printf '%s\n' "${value[@]}" "${@:2}"
         fi
+    else
+        printf '%s\n' "${@}"
     fi
 }
 

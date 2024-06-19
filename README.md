@@ -33,6 +33,8 @@ rather than [creating a new mechanism](https://github.com/junegunn/fzf/wiki/Exam
     See also <https://github.com/junegunn/fzf#settings>
 
     Avoid changing these `fzf` flags: `-n`, `--nth`, `--with-nth`, `-d`
+1. Additional configuration options:
+    * `FZF_TAB_COMPLETION_PROMPT`: sets the prompt prefix, e.g. `'❯ '`. Default: `'> '`.
 
 ## zsh
 
@@ -163,7 +165,7 @@ other
 
 With `FZF_COMPLETION_AUTO_COMMON_PREFIX=true`:
 * when completing `ls <tab>`, it will display fzf with all 4 files (as normal)
-* when completing `ls a<tab>`, it will automatically complete to `ls abc`. 
+* when completing `ls a<tab>`, it will automatically complete to `ls abc`.
     Pressing tab again will show fzf with the first 3 files.
 * when completing `ls abcd<tab>` it will show fzf with the first 2 files (as normal)
 * With `FZF_COMPLETION_AUTO_COMMON_PREFIX_PART=true` set as well:

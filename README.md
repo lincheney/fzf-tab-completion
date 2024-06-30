@@ -194,34 +194,43 @@ _fzf_bash_completion_loading_msg() { echo "${PS1@P}${READLINE_LINE}" | tail -n1;
 NOTE: This uses a `LD_PRELOAD` hack, is only supported on Linux and only for GNU readline
 (*not* e.g. libedit or other readline alternatives).
 
-1. Run: `cd /path/to/fzf-tab-completion/readline/ && cargo build --release`
-1. Copy/symlink `/path/to/fzf-tab-completion/readline/bin/rl_custom_complete` into your `$PATH`
-1. Add to your `~/.inputrc`:
-   ```
-   $include function rl_custom_complete /path/to/fzf-tab-completion/readline/target/release/librl_custom_complete.so
-   "\t": rl_custom_complete
-   ```
-1. Build https://github.com/lincheney/rl_custom_function/
-   * this should produce a file `librl_custom_function.so` which you will use with `LD_PRELOAD` in the next step.
-1. Run something interactive that uses readline, e.g. python:
-   ```bash
-   LD_PRELOAD=/path/to/librl_custom_function.so python
-   ```
-1. To apply this all applications more permanently,
-   you will need to set `LD_PRELOAD` somewhere like `/etc/environment` or `~/.pam_environment`.
-   * NOTE: if you set `LD_PRELOAD` in your `.bashrc`, or similar, it will affect applications run _from_ `bash`
-      but not the parent `bash` process itself.
-   * See also: [link](https://wiki.archlinux.org/index.php/Environment_variables#Per_user)
+1. Clone and build the repositories:
+```bash
+git clone https://github.com/lincheney/fzf-tab-completion
+cargo build --release --manifest-path fzf-tab-completion/readline/Cargo.toml
+git clone https://github.com/lincheney/rl_custom_function
+cargo build --release --manifest-path rl_custom_function/Cargo.toml
+```
+2. Copy the necessary files to your path (e.g., `~/.local/bin/`):
+```bash
+cp fzf-tab-completion/readline/bin/rl_custom_complete ~/.local/bin/
+cp fzf-tab-completion/readline/target/release/librl_custom_complete.so ~/.local/bin/
+cp rl_custom_function/target/release/librl_custom_function.so ~/.local/bin/
+```
+3. Add the following lines to your `~/.inputrc` file:
+```
+$include function rl_custom_complete ~/.local/bin/librl_custom_complete.so
+"\t": rl_custom_complete
+```
+4. To test the setup, run an interactive application that uses readline (e.g., Python):
+```bash
+LD_PRELOAD=$HOME/.local/bin/librl_custom_function.so python
+```
+5. To apply this setup to all applications more permanently, add the `LD_PRELOAD` variable to a system-wide configuration file like `/etc/environment`:
+```bash
+sudo sh -c "echo LD_PRELOAD=$HOME/.local/bin/librl_custom_function.so >> /etc/environment"
+```
+**Note:** If you set `LD_PRELOAD` in your `.bashrc`, or similar, it will affect applications run from bash but not the parent bash process itself. See also: [link](https://wiki.archlinux.org/index.php/Environment_variables#Per_user)
 
-These are the applications that I have seen working:
-* `python2`, `python3`
-* `php -a`
-* `R`
-* `lftp`
-* `irb --legacy` (the new `irb` in ruby 2.7 uses `ruby-reline` instead of readline)
-* `gdb`
-* `sqlite3`
-* `bash` (only when not statically but dynamically linked to libreadline)
+> These are the applications that I have seen working:
+> * `python2`, `python3`
+> * `php -a`
+> * `R`
+> * `lftp`
+> * `irb --legacy` (the new `irb` in ruby 2.7 uses `ruby-reline` instead of readline)
+> * `gdb`
+> * `sqlite3`
+> * `bash` (only when not statically but dynamically linked to libreadline)
 
 ## nodejs repl
 

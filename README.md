@@ -33,8 +33,6 @@ rather than [creating a new mechanism](https://github.com/junegunn/fzf/wiki/Exam
     See also <https://github.com/junegunn/fzf#settings>
 
     Avoid changing these `fzf` flags: `-n`, `--nth`, `--with-nth`, `-d`
-1. Additional configuration options:
-    * `FZF_TAB_COMPLETION_PROMPT`: sets the prompt prefix, e.g. `'❯ '`. Default: `'> '`.
 
 ## zsh
 
@@ -144,6 +142,12 @@ you will need to enable fzf's bash completion _as well_.
 
 If you are using a `bash` that is dynamically linked against readline (`LD_PRELOAD= ldd $(which bash)`)
 you may prefer (or not!) to use the [readline](#readline) method instead.
+
+#### Changing fzf prompt
+
+The `FZF_TAB_COMPLETION_PROMPT` environment variable sets the prompt prefix
+The default is `'> '`.
+You could, for example, change it to `FZF_TAB_COMPLETION_PROMPT='❯ '`. 
 
 #### Autocomplete common prefix
 

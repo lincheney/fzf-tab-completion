@@ -238,7 +238,7 @@ fzf_bash_completion() {
     fi
 
     if [[ ${#raw_comp_words[@]} -gt 1 ]]; then
-        readarray -t raw_comp_words < <(_fzf_bash_completion_expand_alias "${raw_comp_words[@]}")
+        _fzf_bash_completion_expand_alias "${raw_comp_words[@]}"
     fi
     readarray -t COMP_WORDS < <(printf '%s\n' "${raw_comp_words[@]}" | _fzf_bash_completion_unquote_strings)
 
@@ -298,10 +298,8 @@ _fzf_bash_completion_expand_alias() {
     if alias "$1" &>/dev/null; then
         value=( ${BASH_ALIASES[$1]} )
         if [ -n "${value[*]}" -a "${value[0]}" != "$1" ]; then
-            printf '%s\n' "${value[@]}" "${@:2}"
+            raw_comp_words=( "${value[@]}" "${raw_comp_words[@]:1}" )
         fi
-    else
-        printf '%s\n' "${@}"
     fi
 }
 

@@ -102,6 +102,13 @@ _fzf_completion() {
         if builtin zstyle -t "$_FZF_COMPLETION_CONTEXT" fzf-search-display; then
             _FZF_COMPLETION_SEARCH_DISPLAY=1
         fi
+        local _FZF_COMPLETION_SECONDARY_COLOR=
+        if ! builtin zstyle -s "$_FZF_COMPLETION_CONTEXT" fzf-completion-secondary-color _FZF_COMPLETION_SECONDARY_COLOR; then
+            _FZF_COMPLETION_SECONDARY_COLOR=white
+        fi
+        if [[ -n "$_FZF_COMPLETION_SECONDARY_COLOR" ]]; then
+            print -v _FZF_COMPLETION_SECONDARY_COLOR -P "%F{$_FZF_COMPLETION_SECONDARY_COLOR}"
+        fi
 
         set -o monitor +o notify
         exec {__evaled}>&1
@@ -229,8 +236,8 @@ _fzf_completion_selector() {
     fi
 
     local flags=() keybinds=()
-    zstyle -a "$_FZF_COMPLETION_CONTEXT" fzf-completion-opts flags
-    zstyle -a "$_FZF_COMPLETION_CONTEXT" fzf-completion-keybindings keybinds
+    builtin zstyle -a "$_FZF_COMPLETION_CONTEXT" fzf-completion-opts flags
+    builtin zstyle -a "$_FZF_COMPLETION_CONTEXT" fzf-completion-keybindings keybinds
     while IFS=: read -r key action; do
         flags+=( --bind "$key:become:printf %s%q\\\\n ${(q)action}\\  {q} {+}; exit $_FZF_COMPLETION_KEYBINDINGS" )
     done < <( (( ${#keybinds[@]} )) && printf %s\\n "${keybinds[@]}")
@@ -341,11 +348,11 @@ _fzf_completion_compadd() {
             __show_str="$__disp_str"
             __disp_str=
         elif (( ! _FZF_COMPLETION_SEARCH_DISPLAY )); then
-            __disp_str=$'\x1b[37m'"$__disp_str"$'\x1b[0m'
+            __disp_str="$_FZF_COMPLETION_SECONDARY_COLOR$__disp_str"$'\x1b[0m'
         fi
 
         if [[ "$__show_str" == "$PREFIX"* ]]; then
-            __show_str="${__show_str:${#PREFIX}}${_FZF_COMPLETION_SPACE_SEP}"$'\x1b[37m'"${PREFIX}"$'\x1b[0m'
+            __show_str="${__show_str:${#PREFIX}}${_FZF_COMPLETION_SPACE_SEP}${_FZF_COMPLETION_SECONDARY_COLOR}${PREFIX}"$'\x1b[0m'
         else
             __show_str+="${_FZF_COMPLETION_SEP}"
         fi

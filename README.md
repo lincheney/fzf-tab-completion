@@ -130,6 +130,21 @@ for arg in "$@"; do
 done'
 ```
 
+#### changing display string color
+
+By default, the display string and the input prefix (i.e. the parts of the strings that are *not* searchable)
+are highlighted with `\x1b[37m` which *should* come out as a light grey.
+
+You can change this with the `fzf-completion-secondary-color` zstyle, e.g.:
+```bash
+# make it red instead
+zstyle ':completion:*' fzf-completion-secondary-color red
+```
+
+It supports anything that can be used in the zsh prompt escape `%F{...}`, e.g. certain names like `red` or hex sequences like `#ff0000`.
+Consult `man --pager='less -p ^\\s*fg=colour' zshzle` for other possible values.
+If set to an empty string, no color will be applied at all.
+
 ## bash
 
 Add to your `~/.bashrc`:

@@ -289,9 +289,21 @@ fzf_bash_completion() {
 }
 
 _fzf_bash_completion_selector() {
-    FZF_DEFAULT_OPTS="--height ${FZF_TMUX_HEIGHT:-40%} --reverse $FZF_DEFAULT_OPTS $FZF_COMPLETION_OPTS" \
-        $(__fzfcmd 2>/dev/null || echo fzf) -1 -0 --prompt "${FZF_TAB_COMPLETION_PROMPT:-> }$line" --nth 2 -d "$_FZF_COMPLETION_SEP" --ansi \
-    | tr -d "$_FZF_COMPLETION_SEP"
+    (
+        local lines=() REPLY
+        while (( ${#lines[@]} < 2 )); do
+            if IFS= read -r; then
+                lines+=( "$REPLY" )
+            elif (( ${#lines[@]} == 1 )); then # only one input
+                printf %s\\n "${lines[0]}" && return
+            else # no input
+                return 1
+            fi
+        done
+        < <( (( ${#lines[@]} )) && printf %s\\n "${lines[@]}"; cat) \
+        FZF_DEFAULT_OPTS="--height ${FZF_TMUX_HEIGHT:-40%} --reverse $FZF_DEFAULT_OPTS $FZF_COMPLETION_OPTS" \
+            $(__fzfcmd 2>/dev/null || echo fzf) -1 -0 --prompt "${FZF_TAB_COMPLETION_PROMPT:-> }$line" --nth=3 --with-nth=2,3 -d "$_FZF_COMPLETION_SEP" --ansi \
+    ) | cut -d "$_FZF_COMPLETION_SEP" -f1
 }
 
 _fzf_bash_completion_expand_alias() {
@@ -379,7 +391,7 @@ fzf_bash_completer() {
                 printf '%s\n' "$_FZF_COMPLETION_SEP$_fzf_sentinel1$_fzf_sentinel2"
             ) | $_fzf_bash_completion_sed -un "/$_fzf_sentinel1$_fzf_sentinel2/q; p" \
               | _fzf_bash_completion_auto_common_prefix "$raw_cur" \
-              | _fzf_bash_completion_unbuffered_awk '$0!="" && !x[$0]++' '$0 = "\x1b[37m" substr($0, 1, len) "\x1b[0m" sep substr($0, len+1)' -vlen="${#raw_cur}" -vsep="$_FZF_COMPLETION_SEP"
+              | _fzf_bash_completion_unbuffered_awk '$0!="" && !x[$0]++' '$0 = $0 sep "\x1b[37m" substr($0, 1, len) "\x1b[0m" sep substr($0, len+1)' -vlen="${#raw_cur}" -vsep="$_FZF_COMPLETION_SEP"
         )
         local coproc_pid="$COPROC_PID"
         value="$(_fzf_bash_completion_selector "$1" "$raw_cur" "$3" <&"${COPROC[0]}")"

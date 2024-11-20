@@ -2,7 +2,8 @@
 
 sed="$( builtin command -v gsed &>/dev/null && echo gsed || echo sed )"
 
-prefix="$(<<<"$1" "$sed" 's/[[*^$.]/\\&/g')"
-sed "s/^$(<<<"$1" "$sed" 's/././g')/\x1b[37m&\x1b[0m/" \
+input="$1"; shift
+prefix="$(<<<"$input" "$sed" 's/[[*^$.]/\\&/g')"
+sed "s/^$(<<<"$input" "$sed" 's/././g')/\x1b[37m&\x1b[0m/" \
 | FZF_DEFAULT_OPTS="--height ${FZF_TMUX_HEIGHT:-40%} --reverse $FZF_DEFAULT_OPTS $FZF_COMPLETION_OPTS" \
-    fzf --prompt "${FZF_TAB_COMPLETION_PROMPT:-> }$1" -0 -1 -d "^$prefix" --nth=2 --ansi
+    fzf --prompt "${FZF_TAB_COMPLETION_PROMPT:-> }$input" -0 -1 -d "^$prefix" --nth=2 --ansi "$@"

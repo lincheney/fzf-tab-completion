@@ -25,6 +25,7 @@ rather than [creating a new mechanism](https://github.com/junegunn/fzf/wiki/Exam
     * [bash](#bash)
     * [readline](#readline)
     * [nodejs](#nodejs-repl)
+    * [python3](#python3)
 1. The following environment variables are supported, just as in fzf's "vanilla" completion.
     * `$FZF_TMUX_HEIGHT`
     * `$FZF_COMPLETION_OPTS`
@@ -221,6 +222,7 @@ NOTE: This uses a `LD_PRELOAD` hack, is only supported on Linux and only for GNU
 
 These are the applications that I have seen working:
 * `python2`, `python3`
+    * only `PYTHON_BASIC_REPL=1 python3` if python 3.13+, otherwise see [python3](#python3)
 * `php -a`
 * `R`
 * `lftp`
@@ -231,10 +233,30 @@ These are the applications that I have seen working:
 
 ## nodejs repl
 
-1. Copy/symlink `/path/to/fzf-tab-completion/readline/bin/rl_custom_complete` into your `$PATH`
+1. Copy/symlink `/path/to/fzf-tab-completion/node/rl_custom_complete` into your `$PATH`
 1. Then run `node -r /path/to/fzf-tab-completion.git/node/fzf-node-completion.js`
-    * You may wish to add a shell alias to your `zshrc`/`bashrc` to avoid typing out the full command each time, e.g.:
+    * You may wish to add a shell alias to your `~/.zshrc`/`~/.bashrc` to avoid typing out the full command each time, e.g.:
         `alias node='node -r /path/to/fzf-tab-completion.git/node/fzf-node-completion.js`
+
+## python3
+
+1. Copy/symlink `/path/to/fzf-tab-completion/python/rl_custom_complete` into your `$PATH`
+1. Add the code below to either:
+    * your `~/.pythonstartup`
+    * your `$PYTHONPATH/usercustomize.py`
+        * see <https://docs.python.org/3/tutorial/appendix.html#the-customization-modules>
+        * for example, I have `export PYTHONPATH=$HOME/dotfiles/pythonpath` and a file `$HOME/dotfiles/pythonpath/usercustomize.py`
+```python
+with open('/path/to/fzf-tab-completion.git/python/fzf_tab_completion.py') as file:
+    exec(file.read())
+```
+
+This should work with:
+* a normal python shell `python3`, including the new interactive shell from 3.13+
+* the old interactive shell i.e. `PYTHON_BASIC_REPL=1 python3`
+* (only when added to `usercustomize.py`) anything that uses `readline.set_completer(...)`, including:
+    * `python3 -m asyncio`
+    * `pdb` / `breakpoint()`
 
 ## Related projects
 

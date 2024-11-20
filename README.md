@@ -247,7 +247,7 @@ These are the applications that I have seen working:
         * see <https://docs.python.org/3/tutorial/appendix.html#the-customization-modules>
         * for example, I have `export PYTHONPATH=$HOME/dotfiles/pythonpath` and a file `$HOME/dotfiles/pythonpath/usercustomize.py`
 ```python
-with open('/path/to/fzf-tab-completion.git/python/fzf_tab_completion.py') as file:
+with open('/path/to/fzf-tab-completion.git/python/fzf_python_completion.py') as file:
     exec(file.read())
 ```
 

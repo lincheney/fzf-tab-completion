@@ -12,9 +12,25 @@ def init():
     import __main__
 
     #  @functools.lru_cache(1)
-    def make_completer(completer):
+    def make_completer(completer, pre=None, post=None):
         if completer is None:
             return None
+
+        if pre is None:
+            def pre():
+                # doesn't seem to be a good way to redraw the prompt after fzf is done
+                # so start fzf on the next line and get the cursor column so we can restore the cursor position at least
+                # this probably doesn't work if the command is multiline/wraps
+                # can't just use sc/rc as fzf also uses that
+                print('\x1b[6n\r\n', flush=True, end='', file=sys.__stderr__)
+                buf = b''
+                while not (match := re.search(rb'\x1b\[\d+;(\d+)R', buf)) and len(buf) < 100:
+                    buf += os.read(0, 1)
+                return int(match.group(1)) if match else 1
+
+        if post is None:
+            def post(column):
+                print(f'\x1b[A\r\x1b[{column - 1}C', flush=True, end='', file=sys.__stderr__)
 
         @functools.wraps(completer)
         def fn(text, state):
@@ -48,26 +64,18 @@ def init():
                                     doc = getattr(value, '__doc__', doc)
                                 docs[i] = doc.strip().partition('\n')[0].strip() if isinstance(doc, str) else ''
 
-            # doesn't seem to be a good way to redraw the prompt after fzf is done
-            # so start fzf on the next line and get the cursor column so we can restore the cursor position at least
-            # this probably doesn't work if the command is multiline/wraps
-            # can't just use sc/rc as fzf also uses that
-            print('\x1b[6n\r\n', flush=True, end='', file=sys.__stderr__)
-            buf = b''
-            while not (match := re.search(rb'\x1b\[\d+;(\d+)R', buf)) and len(buf) < 100:
-                buf += os.read(0, 1)
-            column = int(match.group(1)) if match else 1
-
             sep = '\x01'
             docs = [' ' * (width - len(m)) + f'\t\x1b[2m-- {d}\x1b[0m' if d else '' for m, d in zip(matches, docs)]
             input = '\n'.join(m + sep + d + sep + m for m, d in zip(matches, docs))
-            args = ['rl_custom_complete', text, '--with-nth=1,2', '-d(^'+re.escape(text)+')|'+sep, '--no-clear']
+            args = ['rl_custom_complete', text, '--with-nth=1,2', '-d(^'+re.escape(text)+')|'+sep]
+
+            state = pre()
             try:
                 return subprocess.check_output(args, input=input, text=True).strip('\n').rpartition(sep)[-1]
             except subprocess.CalledProcessError:
                 return
             finally:
-                print(f'\x1b[J\x1b[A\r\x1b[{column - 1}C', flush=True, end='', file=sys.__stderr__)
+                post(state)
 
         return fn
 
@@ -97,7 +105,11 @@ def init():
         def new_get_completions(stem):
             old_completer = reader.config.readline_completer
             try:
-                reader.config.readline_completer = make_completer(old_completer)
+                reader.config.readline_completer = make_completer(
+                    old_completer,
+                    pre=lambda: setattr(reader, 'dirty', True),
+                    post=lambda x: reader.console.repaint()
+                )
                 return old_get_completions(stem)
             finally:
                 reader.config.readline_completer = old_completer

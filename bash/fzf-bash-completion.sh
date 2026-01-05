@@ -182,12 +182,12 @@ _fzf_bash_completion_compspec() {
 
 _fzf_bash_completion_fallback_completer() {
     # fallback completion in case no compspecs loaded
-    if [[ "$1" == \~* && "$1" != */* ]]; then
+    if [[ "$2" == \~* && "$2" != */* ]]; then
         # complete ~user directories
-        readarray -t COMPREPLY < <(compgen -P '~' -u -- "${1#\~}")
+        readarray -t COMPREPLY < <(compgen -P '~' -u -- "${2#\~}")
     else
         # complete files
-        readarray -t COMPREPLY < <(compgen -f -- "$1")
+        readarray -t COMPREPLY < <(compgen -f -- "$2")
     fi
 }
 

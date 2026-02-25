@@ -157,7 +157,7 @@ s/([^&\n\x00])&([^&\n\x00])/\1\n\&\n\2/g;
 s/([\n\x00\z])([<>]+)([^\n\x00])/\1\2\n\3/g;
 s/([<>][\n\x00])$/\1\n/;
 # clear up until the a keyword starting a new command
-# except the last line isn't a keyword, it may be the start of a command
+# except the last line isnt a keyword, it may be the start of a command
 s/^(.*[\x00\n])?(\[\[|case|do|done|elif|else|esac|fi|for|function|if|in|select|then|time|until|while|&|;|&&|\|[|&]?)\x00//;
 # remove ENVVAR=VALUE
 s/^(\s*[\n\x00]|\w+=[^\n\x00]*[\n\x00])*//

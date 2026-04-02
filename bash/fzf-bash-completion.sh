@@ -237,8 +237,10 @@ fzf_bash_completion() {
         readarray -t raw_comp_words < <(_fzf_bash_completion_parse_line <<<"$line")
     fi
 
-    if [[ ${#raw_comp_words[@]} -gt 1 ]]; then
-        _fzf_bash_completion_expand_alias "${raw_comp_words[@]}"
+    if [[ ${#raw_comp_words[@]} -gt 1 ]] && shopt -q progcomp_alias; then
+        if ! complete -p "${raw_comp_words[0]}" >/dev/null; then
+            _fzf_bash_completion_expand_alias "${raw_comp_words[@]}"
+        fi
     fi
     readarray -t COMP_WORDS < <(printf '%s\n' "${raw_comp_words[@]}" | _fzf_bash_completion_unquote_strings)
 

@@ -317,7 +317,7 @@ _fzf_bash_completion_selector() {
         done
         < <( (( ${#lines[@]} )) && printf %s\\n "${lines[@]}"; cat) \
         FZF_DEFAULT_OPTS="--height $default_height --reverse $FZF_DEFAULT_OPTS $FZF_COMPLETION_OPTS" \
-            "$fzf" -1 -0 --prompt "${FZF_TAB_COMPLETION_PROMPT:-> }$line" --nth=2 --with-nth=2,3 -d "$_FZF_COMPLETION_SEP" --ansi \
+            $fzf -1 -0 --prompt "${FZF_TAB_COMPLETION_PROMPT:-> }$line" --nth=2 --with-nth=2,3 -d "$_FZF_COMPLETION_SEP" --ansi \
     ) | cut -d "$_FZF_COMPLETION_SEP" -f1
 }
 

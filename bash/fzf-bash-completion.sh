@@ -154,7 +154,7 @@ s/\x00(\s*)$/\n\1/;
 # A & B -> (A, &, B)
 s/([^&\n\x00])&([^&\n\x00])/\1\n\&\n\2/g;
 # > B -> (>, B)
-s/([\n\x00\z])([<>]+)([^\n\x00])/\1\2\n\3/g;
+s/([\n\x00])([<>]+)([^\n\x00])/\1\2\n\3/g;
 s/([<>][\n\x00])$/\1\n/;
 # clear up until the a keyword starting a new command
 # except the last line isn't a keyword, it may be the start of a command

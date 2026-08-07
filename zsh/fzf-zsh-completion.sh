@@ -77,7 +77,25 @@ _fzf_completion() {
 
         # all except autoload functions
         local __full_variables="$(typeset -p)"
-        local __full_functions="$(functions + | "$_fzf_bash_completion_grep" -F -vx -e "$(functions -u +)")"
+        local __full_functions="$(
+            {
+                echo '#START#'  # Add markers to ensure we process complete lines
+                functions +
+                echo '#MID#'
+                functions -u +
+                echo '#END#'
+            } | \
+            awk -v RS='\n' '
+                $0=="#START#" { mode="load"; next }
+                $0=="#MID#" { mode="auto"; next }
+                $0=="#END#" { exit }
+                mode=="load" { loaded[$0] = 1 }
+                mode=="auto" && ($0 in loaded) { delete loaded[$0] }
+                END {
+                    for (f in loaded) print f
+                }
+            '
+        )"
         local __autoload_variables="$(typeset + | "$_fzf_bash_completion_grep" -F -e 'undefined ' | "$_fzf_bash_completion_awk" '{print $NF}')"
 
         # do not allow grouping, it stuffs up display strings
@@ -120,7 +138,20 @@ _fzf_completion() {
                 __stderr="$(
                     _fzf_completion_preexit() {
                         trap -
-                        functions + | "$_fzf_bash_completion_grep"  -F -vx -e "$(functions -u +)" -e "$__full_functions" | while read -r f; do which -- "$f"; done >&"${__evaled}"
+                        local -a new_funcs=() known_funcs=()
+                        new_funcs=("${(@f)$(functions +)}")
+                        known_funcs=("${(@f)$(functions -u +)}")
+                        known_funcs+=("${(f)__full_functions}")
+
+                        local -A func_map=()
+                        for f in "${known_funcs[@]}"; do
+                            [[ -n "$f" ]] && func_map[$f]=1
+                        done
+
+                        for f in "${new_funcs[@]}"; do
+                            [[ -n "$f" && -z "${func_map[$f]}" ]] && which -- "$f"
+                        done >&"${__evaled}"
+
                         # skip local and autoload vars
                         { typeset -p -- $(typeset + | "$_fzf_bash_completion_grep" -vF -e 'local ' -e 'undefined ' | "$_fzf_bash_completion_awk" '{print $NF}' | "$_fzf_bash_completion_grep" -vFx -e "$__autoload_variables") | "$_fzf_bash_completion_grep" -xvFf <(printf %s "$__full_variables") >&"${__evaled}" } 2>/dev/null
                     }

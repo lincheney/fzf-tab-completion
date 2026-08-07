@@ -130,9 +130,6 @@ _fzf_bash_completion_unquote_strings() {
         elif [[ "$line" =~ ^\"(\\.|[^\"$])*\"?$ ]]; then
             # double quoted with all special characters quoted
             "$_fzf_bash_completion_sed" -r 's/\\(.)/\1/g' <<<"${line:1-1}"
-        elif [[ "$line" == *\\* && "$line" =~ ^(\\.|[a-zA-Z0-9_])*$ ]]; then
-            # all special characters are quoted
-            "$_fzf_bash_completion_sed" -r 's/\\(.)/\1/g' <<<"$line"
         else
             # this string is either boring or too complicated to parse
             # print as is
